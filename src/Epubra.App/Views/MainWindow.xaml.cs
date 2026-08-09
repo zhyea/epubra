@@ -872,7 +872,7 @@ public partial class MainWindow : Window
             if (b == para) break;
             idx++;
         }
-        ((IList<Block>)doc.Blocks).Insert(idx + 1, table);
+        ((System.Collections.IList)doc.Blocks).Insert(idx + 1, table);
 
         ViewModel.StatusMessage = $"已插入 {rows}×{cols} 表格";
     }
@@ -1000,7 +1000,7 @@ public partial class MainWindow : Window
                 if (b == para) break;
                 idx++;
             }
-            ((IList<Block>)doc.Blocks).Insert(idx + 1, container);
+            ((System.Collections.IList)doc.Blocks).Insert(idx + 1, container);
         }
 
         ViewModel.StatusMessage = $"已插入音频：{fileName} ({data.Length / 1024.0:F1} KB)";

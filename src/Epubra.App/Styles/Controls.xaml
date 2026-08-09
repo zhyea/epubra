@@ -63,7 +63,7 @@
         <Setter Property="FontFamily" Value="{StaticResource FontUI}" />
         <Setter Property="FontSize" Value="{StaticResource FontSizeBase}" />
         <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
-        <Setter Property="Padding" Value="16,6" />
+        <Setter Property="Padding" Value="10,3" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRingStyle}" />
         <Setter Property="Template">
@@ -77,8 +77,9 @@
                         </Border>
                         <!-- 选中指示条：贯穿 Tab 宽度的蓝色高亮（WPS/Office 风格） -->
                         <Border x:Name="indicator" Height="2.5" VerticalAlignment="Bottom"
-                                Margin="6,0" Background="Transparent"
-                                CornerRadius="2,2,0,0" SnapsToDevicePixels="True" />
+                                HorizontalAlignment="Stretch" Margin="0,0"
+                                Background="Transparent"
+                                CornerRadius="0,0,0,0" SnapsToDevicePixels="True" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <MultiTrigger>
@@ -90,7 +91,7 @@
                             <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
                         </MultiTrigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <!-- 选中 Tab 底色与下方内容区融合，形成上浮卡片感 -->
+                            <!-- 选中 Tab 与下方内容区同色一体（WPS 风格），靠蓝字 + 全宽蓝线识别当前页签 -->
                             <Setter TargetName="bd" Property="Background" Value="{DynamicResource SurfaceBase}" />
                             <Setter TargetName="indicator" Property="Background" Value="{DynamicResource AccentDefault}" />
                             <Setter Property="Foreground" Value="{DynamicResource TextAccent}" />
@@ -103,11 +104,11 @@
     </Style>
 
     <!-- Ribbon 分组容器 — 右侧细分隔线 -->
-    <Style x:Key="RibbonGroup" TargetType="Border">
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
-        <Setter Property="BorderThickness" Value="0,0,1,0" />
-        <Setter Property="Padding" Value="10,4,10,4" />
-    </Style>
+        <Style x:Key="RibbonGroup" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}" />
+            <Setter Property="BorderThickness" Value="0,0,1,0" />
+            <Setter Property="Padding" Value="6,2,6,2" />
+        </Style>
 
     <!-- Ribbon 分组标签 — 12px 保证 AA 对比度 -->
     <Style x:Key="GroupLabel" TargetType="TextBlock">
@@ -115,7 +116,7 @@
         <Setter Property="FontSize" Value="{StaticResource FontSizeSm}" />
         <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
         <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="Margin" Value="0,6,0,0" />
+        <Setter Property="Margin" Value="0,3,0,0" />
     </Style>
 
 
@@ -187,8 +188,8 @@
 
     <!-- 图标按钮：28×28 方形 -->
     <Style x:Key="RBtnS" TargetType="Button">
-        <Setter Property="Width" Value="28" />
-        <Setter Property="Height" Value="28" />
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="24" />
         <Setter Property="Margin" Value="1,0" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Background" Value="Transparent" />
@@ -200,16 +201,19 @@
         <Setter Property="Template" Value="{StaticResource RibbonButtonTemplate}" />
     </Style>
 
-    <!-- 文本按钮：自适应宽度 -->
+    <!-- 文本按钮：紧凑高度（仅文字按钮使用，如粘贴/剪切/H1-H4/查找/上移/下移） -->
     <Style x:Key="RBtnM" TargetType="Button">
-        <Setter Property="Height" Value="28" />
-        <Setter Property="MinWidth" Value="52" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="MinHeight" Value="24" />
+        <Setter Property="MinWidth" Value="60" />
         <Setter Property="Margin" Value="1,0" />
-        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Padding" Value="8,0" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
         <Setter Property="FontFamily" Value="{StaticResource FontUI}" />
         <Setter Property="FontSize" Value="{StaticResource FontSizeBase}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRingStyle}" />
         <Setter Property="Template" Value="{StaticResource RibbonButtonTemplate}" />
@@ -217,18 +221,22 @@
 
     <!-- 图标 + 文字组合按钮 -->
     <Style x:Key="RBtnIconText" TargetType="Button" BasedOn="{StaticResource RBtnM}">
-        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="MinWidth" Value="60" />
+        <Setter Property="MinHeight" Value="50" />
+        <Setter Property="Height" Value="50" />
+        <Setter Property="Padding" Value="2,2" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
     <!-- 强调型 Ribbon 按钮：用于「一键排版」「自动切分」等主推功能 -->
     <Style x:Key="RBtnAccent" TargetType="Button" BasedOn="{StaticResource RBtnM}">
         <Setter Property="Foreground" Value="{DynamicResource TextAccent}" />
-        <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
     <Style x:Key="RToggleS" TargetType="ToggleButton">
-        <Setter Property="Width" Value="28" />
-        <Setter Property="Height" Value="28" />
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="24" />
         <Setter Property="Margin" Value="1,0" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Background" Value="Transparent" />
@@ -678,6 +686,8 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Menu">
                     <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{DynamicResource BorderSubtle}"
+                            BorderThickness="0,1,0,0"
                             Padding="{TemplateBinding Padding}">
                         <ItemsPresenter />
                     </Border>

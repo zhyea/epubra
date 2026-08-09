@@ -163,7 +163,7 @@
 
             <!-- ====== Tab: 开始 ====== -->
             <TabItem Style="{StaticResource RibbonTab}" Header="开始">
-                <StackPanel Orientation="Horizontal" Background="Transparent" Height="82">
+                <StackPanel Orientation="Horizontal" Background="Transparent" Height="76">
                     <!-- Group: 剪贴板 -->
                     <Border Style="{StaticResource RibbonGroup}">
                         <StackPanel VerticalAlignment="Center">
@@ -204,7 +204,7 @@
                                 <Button Style="{StaticResource RBtnS}" Content="A−" Click="DecreaseFont_Click" ToolTip="减小字号" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,1">
-                                <ToggleButton x:Name="BoldToggle" Style="{StaticResource RToggleS}" Content="B" FontWeight="Bold" Click="Bold_Click" ToolTip="加粗 (Ctrl+B)" />
+                                <ToggleButton x:Name="BoldToggle" Style="{StaticResource RToggleS}" Content="B" Click="Bold_Click" ToolTip="加粗 (Ctrl+B)" />
                                 <ToggleButton x:Name="ItalicToggle" Style="{StaticResource RToggleS}" Content="I" FontStyle="Italic" Click="Italic_Click" ToolTip="斜体 (Ctrl+I)" />
                                 <ToggleButton x:Name="UnderlineToggle" Style="{StaticResource RToggleS}" Click="Underline_Click" ToolTip="下划线 (Ctrl+U)">
                                     <TextBlock Text="U" TextDecorations="Underline" />
@@ -260,10 +260,10 @@
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,1">
                                 <Button Style="{StaticResource RBtnM}" Content="正文" Tag="" Click="Style_Click" ToolTip="正文样式" />
-                                <Button Style="{StaticResource RBtnM}" Content="H1" Tag="h1" Click="Style_Click" ToolTip="标题1" FontWeight="Bold" />
-                                <Button Style="{StaticResource RBtnM}" Content="H2" Tag="h2" Click="Style_Click" ToolTip="标题2" FontWeight="Bold" />
-                                <Button Style="{StaticResource RBtnM}" Content="H3" Tag="h3" Click="Style_Click" ToolTip="标题3" FontWeight="Bold" />
-                                <Button Style="{StaticResource RBtnM}" Content="H4" Tag="h4" Click="Style_Click" ToolTip="标题4" FontWeight="Bold" />
+                                <Button Style="{StaticResource RBtnM}" Content="H1" Tag="h1" Click="Style_Click" ToolTip="标题1" />
+                                <Button Style="{StaticResource RBtnM}" Content="H2" Tag="h2" Click="Style_Click" ToolTip="标题2" />
+                                <Button Style="{StaticResource RBtnM}" Content="H3" Tag="h3" Click="Style_Click" ToolTip="标题3" />
+                                <Button Style="{StaticResource RBtnM}" Content="H4" Tag="h4" Click="Style_Click" ToolTip="标题4" />
                             </StackPanel>
                             <TextBlock Style="{StaticResource GroupLabel}" Text="样式" />
                         </StackPanel>
@@ -284,9 +284,9 @@
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,1">
                                 <Button Style="{StaticResource RBtnAccent}" Command="{Binding AutoFormatChapterCommand}" ToolTip="自动清理格式、修正标点、统一缩进">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconMagicFormat}" />
-                                        <TextBlock Text="一键排版" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconMagicFormat}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="一键排版" Margin="0,2,0,0" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
@@ -298,26 +298,26 @@
 
             <!-- ====== Tab: 插入 ====== -->
             <TabItem Style="{StaticResource RibbonTab}" Header="插入">
-                <StackPanel Orientation="Horizontal" Background="Transparent" Height="82">
+                <StackPanel Orientation="Horizontal" Background="Transparent" Height="76">
                     <Border Style="{StaticResource RibbonGroup}">
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,1">
                                 <Button Style="{StaticResource RBtnIconText}" Click="InsertImage_Click" ToolTip="插入图片">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconImage}" />
-                                        <TextBlock Text="插入图片" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconImage}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="插入图片" Margin="0,2,0,0" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button Style="{StaticResource RBtnIconText}" Click="SetCover_Click" ToolTip="设置封面图片">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconBookCover}" />
-                                        <TextBlock Text="封面" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconBookCover}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="封面" Margin="0,2,0,0" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button Style="{StaticResource RBtnAccent}" Click="ShowMetadata_Click" ToolTip="书籍元数据设置">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconInfo}" />
-                                        <TextBlock Text="书籍信息" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconInfo}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="书籍信息" Margin="0,2,0,0" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
@@ -328,9 +328,9 @@
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,1">
                                 <Button Style="{StaticResource RBtnIconText}" Click="InsertAudio_Click" ToolTip="插入音频文件到当前章节">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconAudio}" />
-                                        <TextBlock Text="插入音频" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconAudio}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="插入音频" Margin="0,2,0,0" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
@@ -341,9 +341,9 @@
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,1">
                                 <Button Style="{StaticResource RBtnIconText}" Click="Hyperlink_Click" ToolTip="插入超链接 (Ctrl+K)">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconLink}" />
-                                        <TextBlock Text="超链接" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconLink}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="超链接" Margin="0,2,0,0" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
@@ -354,9 +354,9 @@
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,1">
                                 <Button Style="{StaticResource RBtnIconText}" Click="HorizontalLine_Click" ToolTip="插入水平分隔线">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconHorizontalRule}" />
-                                        <TextBlock Text="水平线" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconHorizontalRule}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="水平线" Margin="0,2,0,0" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
@@ -367,9 +367,9 @@
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,1">
                                 <Button Style="{StaticResource RBtnIconText}" Click="Table_Click" ToolTip="插入表格">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconTable}" />
-                                        <TextBlock Text="表格" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconTable}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="表格" Margin="0,2,0,0" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
@@ -381,7 +381,7 @@
 
             <!-- ====== Tab: 章节 ====== -->
             <TabItem Style="{StaticResource RibbonTab}" Header="章节">
-                <StackPanel Orientation="Horizontal" Background="Transparent" Height="82">
+                <StackPanel Orientation="Horizontal" Background="Transparent" Height="76">
                     <Border Style="{StaticResource RibbonGroup}">
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,1">
@@ -422,7 +422,7 @@
 
             <!-- ====== Tab: 输出 ====== -->
             <TabItem Style="{StaticResource RibbonTab}" Header="输出">
-                <StackPanel Orientation="Horizontal" Background="Transparent" Height="82">
+                <StackPanel Orientation="Horizontal" Background="Transparent" Height="76">
                     <Border Style="{StaticResource RibbonGroup}">
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,1">
@@ -449,9 +449,9 @@
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,1">
                                 <Button Style="{StaticResource RBtnIconText}" Click="EmbedFont_Click" ToolTip="嵌入字体到 EPUB">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconFont}" />
-                                        <TextBlock Text="嵌入字体" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconFont}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="嵌入字体" Margin="0,2,0,0" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
@@ -475,7 +475,7 @@
 
             <!-- ====== Tab: 视图 ====== -->
             <TabItem Style="{StaticResource RibbonTab}" Header="视图">
-                <StackPanel Orientation="Horizontal" Background="Transparent" Height="82">
+                <StackPanel Orientation="Horizontal" Background="Transparent" Height="76">
                     <Border Style="{StaticResource RibbonGroup}">
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,1">
@@ -497,15 +497,15 @@
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,1">
                                 <Button Style="{StaticResource RBtnIconText}" Command="{Binding UndoCommand}" ToolTip="撤销 (Ctrl+Z)">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconUndo}" />
-                                        <TextBlock Text="撤销" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconUndo}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="撤销" Margin="0,2,0,0" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button Style="{StaticResource RBtnIconText}" Command="{Binding RedoCommand}" ToolTip="重做 (Ctrl+Y)">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconRedo}" />
-                                        <TextBlock Text="重做" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconRedo}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="重做" Margin="0,2,0,0" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
@@ -530,34 +530,6 @@
                 </StackPanel>
             </TabItem>
         </TabControl>
-
-        <!-- ====== 元数据栏（单行紧凑） ====== -->
-        <Border DockPanel.Dock="Top" Background="{DynamicResource SurfaceMuted}"
-                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1"
-                Padding="10,5">
-            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="书名" />
-                    <TextBox Text="{Binding BookTitle, UpdateSourceTrigger=PropertyChanged}" Width="200" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="作者" />
-                    <TextBox Text="{Binding BookAuthor, UpdateSourceTrigger=PropertyChanged}" Width="150" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="出版社" />
-                    <TextBox Text="{Binding BookPublisher, UpdateSourceTrigger=PropertyChanged}" Width="150" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="ISBN" />
-                    <TextBox Text="{Binding BookIsbn, UpdateSourceTrigger=PropertyChanged}" Width="150" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="语言" />
-                    <TextBox Text="{Binding BookLanguage, UpdateSourceTrigger=PropertyChanged}" Width="60" />
-                </StackPanel>
-            </WrapPanel>
-        </Border>
 
         <!-- ====== 状态栏（带图标分区） ====== -->
         <StatusBar DockPanel.Dock="Bottom">
@@ -742,15 +714,15 @@
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
                             <TextBlock Text="查找：" VerticalAlignment="Center" Width="40" />
                             <TextBox x:Name="FindTextBox" Width="250" KeyDown="FindTextBox_KeyDown" />
-                            <Button Style="{StaticResource RBtnM}" Content="下一个" Margin="4,0,0,0" Click="FindNext_Click" />
-                            <Button Style="{StaticResource RBtnM}" Content="上一个" Margin="4,0,0,0" Click="FindPrev_Click" />
-                            <Button Style="{StaticResource RBtnM}" Content="×" Width="28" Margin="4,0,0,0" Click="CloseFindReplace_Click" ToolTip="关闭" />
+                            <Button Style="{StaticResource RBtnM}" Content="下一个" Height="24" Margin="4,0,0,0" Click="FindNext_Click" />
+                            <Button Style="{StaticResource RBtnM}" Content="上一个" Height="24" Margin="4,0,0,0" Click="FindPrev_Click" />
+                            <Button Style="{StaticResource RBtnM}" Content="×" Width="28" Height="24" Margin="4,0,0,0" Click="CloseFindReplace_Click" ToolTip="关闭" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="替换：" VerticalAlignment="Center" Width="40" />
                             <TextBox x:Name="ReplaceTextBox" Width="250" />
-                            <Button Style="{StaticResource RBtnM}" Content="替换" Margin="4,0,0,0" Click="ReplaceOne_Click" />
-                            <Button Style="{StaticResource RBtnM}" Content="全部替换" Margin="4,0,0,0" Click="ReplaceAll_Click" />
+                            <Button Style="{StaticResource RBtnM}" Content="替换" Height="24" Margin="4,0,0,0" Click="ReplaceOne_Click" />
+                            <Button Style="{StaticResource RBtnM}" Content="全部替换" Height="24" Margin="4,0,0,0" Click="ReplaceAll_Click" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
