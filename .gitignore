@@ -1,24 +1,45 @@
-# Compiled class file
-*.class
+## .NET / Visual Studio
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+.vscode/
+.idea/
+*.swp
 
-# Log file
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
+## Build outputs
+*.dll
+*.exe
+*.pdb
 *.zip
-*.tar.gz
-*.rar
+!samples/**/*.zip
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
+## NuGet
+*.nupkg
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## Test results
+TestResults/
+*.trx
+coverage.*.xml
+*.coverage
+
+## Misc
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+## Old Java leftovers (kept here in case user re-imports)
+# *.class
+# *.jar
+
+
+.idea
+.workbuddy
+_qa_probe.tmp

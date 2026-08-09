@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Epubra.Editor</RootNamespace>
+    <AssemblyName>Epubra.Editor</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Epubra.Core\Epubra.Core.csproj" />
+    <ProjectReference Include="..\Epubra.Epub\Epubra.Epub.csproj" />
+  </ItemGroup>
+
+</Project>

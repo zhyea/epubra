@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Epubra.App</RootNamespace>
+    <AssemblyName>Epubra</AssemblyName>
+    <ApplicationIcon />
+
+    <!-- 版本信息 -->
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Company>Epubra</Company>
+    <Product>Epubra EPUB 编辑器</Product>
+    <Description>轻量级 EPUB 编辑器 - 章节管理、富文本编辑、EPUB 3.0 导出</Description>
+    <Copyright>Copyright © 2026</Copyright>
+  </PropertyGroup>
+
+  <!-- 发布配置：自包含单文件 -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2795.45" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Epubra.Core\Epubra.Core.csproj" />
+    <ProjectReference Include="..\Epubra.Editor\Epubra.Editor.csproj" />
+    <ProjectReference Include="..\Epubra.Epub\Epubra.Epub.csproj" />
+    <ProjectReference Include="..\Epubra.Export\Epubra.Export.csproj" />
+    <ProjectReference Include="..\Epubra.Infrastructure\Epubra.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

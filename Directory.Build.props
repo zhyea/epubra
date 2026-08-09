@@ -1,0 +1,8 @@
+<Project>
+  <!--
+    TEMPORARY verification artifact created during local build in the agent
+    sandbox (workspace obj/bin were locked by the host file watcher, so the
+    build was redirected to C:\epubra_bld*). This file is now a NO-OP and
+    must be DELETED before committing — it should not ship with the repo.
+  -->
+</Project>

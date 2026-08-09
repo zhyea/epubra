@@ -1,0 +1,139 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+    <!--
+    ============================================================
+      Epubra 设计令牌 (Design Tokens) — 主题无关基础层
+      ==============================
+      整体分三层：
+        1. Palette  — 原始色阶，不直接在界面中使用      【本文件】
+        2. Semantic — 语义映射，界面只引用这一层        【Themes/Theme.*.xaml】
+        3. Metrics  — 排版 / 间距 / 圆角 / 时长          【本文件】
+
+      语义层已按主题拆分到 Styles/Themes/ 下：
+        · Theme.Light.xaml  浅色
+        · Theme.Dark.xaml   深色
+        · Theme.Sepia.xaml  护眼
+      由 Epubra.App.Services.ThemeService 在运行时热替换。
+      界面引用语义键必须使用 DynamicResource；引用本文件的
+      Palette / Metrics 键使用 StaticResource（主题无关，无需刷新）。
+    ============================================================
+    -->
+
+    <!-- ==========================================================
+         1. PALETTE — 原始色阶（主题无关）
+         ========================================================== -->
+
+    <!-- 品牌色：WPS 蓝 (WPS Blue) -->
+    <Color x:Key="PaletteBrand50">#FFE8F1FF</Color>
+    <Color x:Key="PaletteBrand100">#FFCCE0FF</Color>
+    <Color x:Key="PaletteBrand200">#FF99C2FF</Color>
+    <Color x:Key="PaletteBrand300">#FF66A3FF</Color>
+    <Color x:Key="PaletteBrand400">#FF3399FF</Color>
+    <Color x:Key="PaletteBrand500">#FF2B7FFF</Color>
+    <Color x:Key="PaletteBrand600">#FF1A66E6</Color>
+    <Color x:Key="PaletteBrand700">#FF1452B8</Color>
+    <Color x:Key="PaletteBrand800">#FF0F3E8A</Color>
+
+    <!-- 中性色：暖调灰阶，比纯灰更适合长时间阅读 -->
+    <Color x:Key="PaletteNeutral0">#FFFFFFFF</Color>
+    <Color x:Key="PaletteNeutral25">#FFFCFCFD</Color>
+    <Color x:Key="PaletteNeutral50">#FFF8F9FA</Color>
+    <Color x:Key="PaletteNeutral100">#FFF1F3F5</Color>
+    <Color x:Key="PaletteNeutral150">#FFE9ECEF</Color>
+    <Color x:Key="PaletteNeutral200">#FFDEE2E6</Color>
+    <Color x:Key="PaletteNeutral300">#FFCED4DA</Color>
+    <Color x:Key="PaletteNeutral400">#FFADB5BD</Color>
+    <Color x:Key="PaletteNeutral500">#FF868E96</Color>
+    <Color x:Key="PaletteNeutral600">#FF6C757D</Color>
+    <Color x:Key="PaletteNeutral700">#FF495057</Color>
+    <Color x:Key="PaletteNeutral800">#FF343A40</Color>
+    <Color x:Key="PaletteNeutral900">#FF212529</Color>
+
+    <!-- 语义色 -->
+    <Color x:Key="PaletteSuccess">#FF2F9E44</Color>
+    <Color x:Key="PaletteSuccessSubtle">#FFEBFBEE</Color>
+    <Color x:Key="PaletteWarning">#FFE8590C</Color>
+    <Color x:Key="PaletteWarningSubtle">#FFFFF4E6</Color>
+    <Color x:Key="PaletteDanger">#FFD62828</Color>
+    <Color x:Key="PaletteDangerSubtle">#FFFFF0F0</Color>
+
+
+    <!-- ==========================================================
+         2. SEMANTIC — 已迁出至 Styles/Themes/Theme.{Light|Dark|Sepia}.xaml
+            本文件不再定义任何语义画刷，以便主题字典整体热替换。
+         ========================================================== -->
+
+    <!-- 标题栏画刷已迁出至各主题字典（Theme.{Light|Dark|Sepia}.xaml），
+         以随主题切换底色/前景/悬停色。 -->
+
+
+    <!-- ==========================================================
+         3. METRICS — 排版 / 间距 / 圆角 / 动效（主题无关）
+         ========================================================== -->
+
+    <!-- == 字族 == -->
+    <!-- UI 字体：优先微软雅黑 UI（中文字形更适合界面），回退 Segoe UI -->
+    <FontFamily x:Key="FontUI">Microsoft YaHei UI, Segoe UI, Microsoft YaHei</FontFamily>
+    <!-- 图标字体：Win11 Fluent → Win10 MDL2 → 通用符号，三级回退 -->
+    <FontFamily x:Key="FontIcon">Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI Symbol</FontFamily>
+    <!-- 内容字体：正文编辑区 -->
+    <FontFamily x:Key="FontContent">宋体, SimSun, Songti SC</FontFamily>
+    <!-- 等宽：ISBN / 代码类 -->
+    <FontFamily x:Key="FontMono">Cascadia Mono, Consolas, Courier New</FontFamily>
+
+    <!-- == 字号阶梯 == -->
+    <sys:Double x:Key="FontSizeXs">11</sys:Double>
+    <sys:Double x:Key="FontSizeSm">12</sys:Double>
+    <sys:Double x:Key="FontSizeBase">13</sys:Double>
+    <sys:Double x:Key="FontSizeMd">14</sys:Double>
+    <sys:Double x:Key="FontSizeLg">16</sys:Double>
+    <sys:Double x:Key="FontSizeXl">20</sys:Double>
+    <sys:Double x:Key="FontSizeIconSm">14</sys:Double>
+    <sys:Double x:Key="FontSizeIconMd">16</sys:Double>
+
+    <!-- == 间距（4px 基准栅格） == -->
+    <sys:Double x:Key="Space1">4</sys:Double>
+    <sys:Double x:Key="Space2">8</sys:Double>
+    <sys:Double x:Key="Space3">12</sys:Double>
+    <sys:Double x:Key="Space4">16</sys:Double>
+    <sys:Double x:Key="Space5">20</sys:Double>
+    <sys:Double x:Key="Space6">24</sys:Double>
+
+    <Thickness x:Key="PadXs">4,2</Thickness>
+    <Thickness x:Key="PadSm">8,4</Thickness>
+    <Thickness x:Key="PadMd">12,6</Thickness>
+    <Thickness x:Key="PadLg">16,8</Thickness>
+    <Thickness x:Key="PadCard">16</Thickness>
+
+    <!-- == 圆角 == -->
+    <CornerRadius x:Key="RadiusSm">3</CornerRadius>
+    <CornerRadius x:Key="RadiusMd">4</CornerRadius>
+    <CornerRadius x:Key="RadiusLg">6</CornerRadius>
+    <CornerRadius x:Key="RadiusXl">8</CornerRadius>
+    <CornerRadius x:Key="RadiusPill">999</CornerRadius>
+
+    <!-- == 控件尺寸 == -->
+    <!-- Ribbon 图标按钮：28×28（含 margin 达到 32px 触达区） -->
+    <sys:Double x:Key="SizeIconBtn">28</sys:Double>
+    <!-- 标准控件高度 -->
+    <sys:Double x:Key="SizeControlSm">26</sys:Double>
+    <sys:Double x:Key="SizeControlMd">30</sys:Double>
+    <sys:Double x:Key="SizeControlLg">34</sys:Double>
+    <!-- 章节树行高：30px，兼顾密度与可点击性 -->
+    <sys:Double x:Key="SizeTreeRow">30</sys:Double>
+
+    <!-- == 动效时长 == -->
+    <Duration x:Key="MotionFast">0:0:0.12</Duration>
+    <Duration x:Key="MotionNormal">0:0:0.2</Duration>
+
+    <!-- == 阴影 == -->
+    <DropShadowEffect x:Key="ShadowOverlay"
+                      BlurRadius="16" ShadowDepth="3" Direction="270"
+                      Color="#FF212529" Opacity="0.14" RenderingBias="Quality" />
+    <DropShadowEffect x:Key="ShadowCard"
+                      BlurRadius="8" ShadowDepth="1" Direction="270"
+                      Color="#FF212529" Opacity="0.08" RenderingBias="Quality" />
+
+</ResourceDictionary>

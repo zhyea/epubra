@@ -1,0 +1,781 @@
+<Window x:Class="Epubra.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        xmlns:conv="clr-namespace:Epubra.App.Converters"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="{Binding WindowTitle}" Height="760" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        Background="{DynamicResource SurfaceBase}"
+        Loaded="MainWindow_Loaded"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        PreviewMouseLeftButtonDown="Window_PreviewMouseLeftButtonDown">
+    <WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6" CornerRadius="8" UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
+        <conv:CountToVisibilityConverter x:Key="CountToVisibility" />
+        <HierarchicalDataTemplate x:Key="ChapterTemplate" ItemsSource="{Binding Children}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+            </StackPanel>
+        </HierarchicalDataTemplate>
+    </Window.Resources>
+
+    <Window.CommandBindings>
+        <CommandBinding Command="ApplicationCommands.Save" Executed="Save_Executed" />
+    </Window.CommandBindings>
+
+    <Window.InputBindings>
+        <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveProjectCommand}" />
+        <KeyBinding Gesture="Ctrl+E" Command="{Binding ExportEpubCommand}" />
+        <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
+        <KeyBinding Gesture="Ctrl+Y" Command="{Binding RedoCommand}" />
+        <KeyBinding Gesture="Ctrl+N" Command="{Binding NewProjectCommand}" />
+        <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenProjectCommand}" />
+        <KeyBinding Gesture="Ctrl+F" Command="{Binding FindReplaceCommand}" />
+    </Window.InputBindings>
+
+    <DockPanel>
+        <!-- ====== 自定义标题栏（WPS 风格） ====== -->
+        <Border x:Name="TitleBar" DockPanel.Dock="Top" Height="40"
+                Background="{DynamicResource TitleBarBrush}"
+                MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 左：Logo + 应用名 + 文档标题 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,8,0">
+                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconBookCover}"
+                          Width="18" Height="18" Stroke="{DynamicResource TitleBarForeground}" />
+                    <TextBlock Text="Epubra" Foreground="{DynamicResource TitleBarForeground}"
+                               FontFamily="{StaticResource FontUI}" FontSize="14" FontWeight="Bold"
+                               VerticalAlignment="Center" Margin="8,0,0,0" />
+                    <TextBlock Text="{Binding WindowTitle}" Foreground="{DynamicResource TitleBarForeground}"
+                               Opacity="0.78" FontFamily="{StaticResource FontUI}" FontSize="12"
+                               VerticalAlignment="Center" Margin="10,0,0,0" />
+                </StackPanel>
+
+                <!-- 中：快速访问工具栏 -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                    <Button Style="{StaticResource QatButton}" ToolTip="新建项目 (Ctrl+N)" Command="{Binding NewProjectCommand}">
+                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconNew}" />
+                    </Button>
+                    <Button Style="{StaticResource QatButton}" ToolTip="打开项目 (Ctrl+O)" Command="{Binding OpenProjectCommand}">
+                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconOpen}" />
+                    </Button>
+                    <Button Style="{StaticResource QatButton}" ToolTip="保存项目 (Ctrl+S)" Command="{Binding SaveProjectCommand}">
+                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconSave}" />
+                    </Button>
+                    <Rectangle Width="1" Height="20" Fill="{DynamicResource TitleBarForeground}" Opacity="0.22" Margin="4,0" />
+                    <Button Style="{StaticResource QatButton}" ToolTip="撤销 (Ctrl+Z)" Command="{Binding UndoCommand}">
+                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconUndo}" />
+                    </Button>
+                    <Button Style="{StaticResource QatButton}" ToolTip="重做 (Ctrl+Y)" Command="{Binding RedoCommand}">
+                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconRedo}" />
+                    </Button>
+                    <Rectangle Width="1" Height="20" Fill="{DynamicResource TitleBarForeground}" Opacity="0.22" Margin="4,0" />
+                    <Button Style="{StaticResource QatButton}" ToolTip="一键排版" Command="{Binding AutoFormatChapterCommand}">
+                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconMagicFormat}" />
+                    </Button>
+                    <ToggleButton x:Name="TitleBarPreviewBtn" Style="{StaticResource QatToggleButton}"
+                                  IsChecked="{Binding IsPreviewMode, Mode=TwoWay}" ToolTip="预览模式">
+                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconPreview}" />
+                    </ToggleButton>
+                    <Button Style="{StaticResource QatButton}" ToolTip="切换主题" Click="TitleBarTheme_Click">
+                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconFontColor}" />
+                    </Button>
+                </StackPanel>
+
+                <!-- 右：窗口控制 -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource TitleBarButton}" ToolTip="最小化" Click="Minimize_Click">
+                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconMinimize}" />
+                    </Button>
+                    <Button x:Name="MaxRestoreBtn" Style="{StaticResource TitleBarButton}" ToolTip="最大化" Click="MaximizeRestore_Click">
+                        <Path x:Name="MaxRestoreIcon" Style="{StaticResource IconPath}" Data="{StaticResource IconMaximize}" />
+                    </Button>
+                    <Button Style="{StaticResource TitleBarCloseButton}" ToolTip="关闭" Click="Close_Click">
+                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconClose}" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ====== 菜单栏 ====== -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="文件(_F)">
+                <MenuItem Header="新建项目(_N)" InputGestureText="Ctrl+N" Command="{Binding NewProjectCommand}" />
+                <MenuItem Header="打开项目(_O)" InputGestureText="Ctrl+O" Command="{Binding OpenProjectCommand}" />
+                <MenuItem Header="保存项目(_S)" InputGestureText="Ctrl+S" Command="{Binding SaveProjectCommand}" />
+                <Separator />
+                <MenuItem Header="导入 EPUB(_I)" Command="{Binding ImportEpubCommand}" />
+                <MenuItem Header="导入 TXT(_T)" Command="{Binding ImportTxtCommand}" />
+                <Separator />
+                <MenuItem Header="生成 EPUB(_E)" InputGestureText="Ctrl+E" Command="{Binding ExportEpubCommand}" />
+                <MenuItem Header="导出 TXT" Command="{Binding ExportTxtCommand}" />
+                <MenuItem Header="导出 HTML" Command="{Binding ExportHtmlCommand}" />
+                <Separator />
+                <MenuItem Header="退出(_X)" Click="Exit_Click" />
+            </MenuItem>
+            <MenuItem Header="章节(_C)">
+                <MenuItem Header="添加章节(_A)" Command="{Binding AddChapterCommand}" />
+                <MenuItem Header="添加子章节(_S)" Command="{Binding AddSubChapterCommand}" />
+                <Separator />
+                <MenuItem Header="重命名(_R)" Command="{Binding RenameChapterCommand}" />
+                <Separator />
+                <MenuItem Header="上移(_U)" Command="{Binding MoveUpCommand}" />
+                <MenuItem Header="下移(_D)" Command="{Binding MoveDownCommand}" />
+                <Separator />
+                <MenuItem Header="缩进(_I)" Command="{Binding IndentCommand}" />
+                <MenuItem Header="取消缩进(_O)" Command="{Binding OutdentCommand}" />
+                <Separator />
+                <MenuItem Header="自动切分章节(_P)" Command="{Binding AutoSplitChapterCommand}" />
+                <MenuItem Header="一键排版(_F)" Command="{Binding AutoFormatChapterCommand}" />
+                <Separator />
+                <MenuItem Header="删除章节(_Del)" Command="{Binding DeleteChapterCommand}" />
+            </MenuItem>
+            <MenuItem Header="书籍(_B)">
+                <MenuItem Header="书籍信息(_I)" Click="ShowMetadata_Click" />
+            </MenuItem>
+            <MenuItem Header="视图(_V)">
+                <MenuItem x:Name="ToggleRibbonMenuItem" Header="折叠工具栏(_R)" InputGestureText="Ctrl+F1" Click="ToggleRibbon_Click" />
+            </MenuItem>
+            <MenuItem Header="帮助(_H)">
+                <MenuItem Header="关于 Epubra" Click="About_Click" />
+            </MenuItem>
+        </Menu>
+
+        <!-- ====== Ribbon 工具栏 ====== -->
+        <TabControl x:Name="RibbonTabs" DockPanel.Dock="Top"
+                    BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderSubtle}"
+                    Background="{DynamicResource SurfaceBase}" Padding="0"
+                    MouseDoubleClick="RibbonTabs_MouseDoubleClick"
+                    PreviewMouseLeftButtonDown="RibbonTabs_PreviewMouseLeftButtonDown">
+
+            <!-- ====== Tab: 开始 ====== -->
+            <TabItem Style="{StaticResource RibbonTab}" Header="开始">
+                <StackPanel Orientation="Horizontal" Background="Transparent" Height="82">
+                    <!-- Group: 剪贴板 -->
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnM}" Content="粘贴" Click="Paste_Click" ToolTip="粘贴 (Ctrl+V)" />
+                                <Button Style="{StaticResource RBtnS}" Click="Cut_Click" ToolTip="剪切 (Ctrl+X)">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconCut}" />
+                                </Button>
+                                <Button Style="{StaticResource RBtnS}" Click="Copy_Click" ToolTip="复制 (Ctrl+C)">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconCopy}" />
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="剪贴板" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Group: 字体 -->
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <ComboBox x:Name="FontFamilyCombo" Width="88" SelectionChanged="FontFamily_Changed" ToolTip="字体">
+                                    <ComboBoxItem Content="宋体" IsSelected="True" />
+                                    <ComboBoxItem Content="黑体" />
+                                    <ComboBoxItem Content="楷体" />
+                                    <ComboBoxItem Content="仿宋" />
+                                    <ComboBoxItem Content="微软雅黑" />
+                                </ComboBox>
+                                <ComboBox x:Name="FontSizeCombo" Width="45" SelectionChanged="FontSize_Changed" ToolTip="字号">
+                                    <ComboBoxItem Content="12" />
+                                    <ComboBoxItem Content="14" />
+                                    <ComboBoxItem Content="16" IsSelected="True" />
+                                    <ComboBoxItem Content="18" />
+                                    <ComboBoxItem Content="20" />
+                                    <ComboBoxItem Content="24" />
+                                    <ComboBoxItem Content="28" />
+                                </ComboBox>
+                                <Button Style="{StaticResource RBtnS}" Content="A+" Click="IncreaseFont_Click" ToolTip="增大字号" />
+                                <Button Style="{StaticResource RBtnS}" Content="A−" Click="DecreaseFont_Click" ToolTip="减小字号" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <ToggleButton x:Name="BoldToggle" Style="{StaticResource RToggleS}" Content="B" FontWeight="Bold" Click="Bold_Click" ToolTip="加粗 (Ctrl+B)" />
+                                <ToggleButton x:Name="ItalicToggle" Style="{StaticResource RToggleS}" Content="I" FontStyle="Italic" Click="Italic_Click" ToolTip="斜体 (Ctrl+I)" />
+                                <ToggleButton x:Name="UnderlineToggle" Style="{StaticResource RToggleS}" Click="Underline_Click" ToolTip="下划线 (Ctrl+U)">
+                                    <TextBlock Text="U" TextDecorations="Underline" />
+                                </ToggleButton>
+                                <ToggleButton x:Name="StrikeToggle" Style="{StaticResource RToggleS}" Click="Strikethrough_Click" ToolTip="删除线">
+                                    <TextBlock Text="S" TextDecorations="Strikethrough" />
+                                </ToggleButton>
+                                <Button Style="{StaticResource RBtnS}" Click="FontColor_Click" ToolTip="字体颜色">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconFontColor}" />
+                                </Button>
+                                <Button Style="{StaticResource RBtnS}" Click="ClearFormat_Click" ToolTip="清除格式">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconClearFormat}" />
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="字体" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Group: 段落 -->
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <ToggleButton x:Name="BulletToggle" Style="{StaticResource RToggleS}" Click="BulletList_Click" ToolTip="项目符号">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconBulletDots}" />
+                                </ToggleButton>
+                                <Button Style="{StaticResource RBtnS}" Click="DecreaseIndent_Click" ToolTip="减少缩进">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconIndentLess}" />
+                                </Button>
+                                <Button Style="{StaticResource RBtnS}" Click="IncreaseIndent_Click" ToolTip="增加缩进">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconIndentMore}" />
+                                </Button>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <ToggleButton x:Name="AlignLeftToggle" Style="{StaticResource RToggleS}" Click="AlignLeft_Click" ToolTip="左对齐">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconAlignLeft}" />
+                                </ToggleButton>
+                                <ToggleButton x:Name="AlignCenterToggle" Style="{StaticResource RToggleS}" Click="AlignCenter_Click" ToolTip="居中">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconAlignCenter}" />
+                                </ToggleButton>
+                                <ToggleButton x:Name="AlignRightToggle" Style="{StaticResource RToggleS}" Click="AlignRight_Click" ToolTip="右对齐">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconAlignRight}" />
+                                </ToggleButton>
+                                <ToggleButton x:Name="AlignJustifyToggle" Style="{StaticResource RToggleS}" Click="AlignJustify_Click" ToolTip="两端对齐">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconAlignJustify}" />
+                                </ToggleButton>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="段落" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Group: 样式 -->
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnM}" Content="正文" Tag="" Click="Style_Click" ToolTip="正文样式" />
+                                <Button Style="{StaticResource RBtnM}" Content="H1" Tag="h1" Click="Style_Click" ToolTip="标题1" FontWeight="Bold" />
+                                <Button Style="{StaticResource RBtnM}" Content="H2" Tag="h2" Click="Style_Click" ToolTip="标题2" FontWeight="Bold" />
+                                <Button Style="{StaticResource RBtnM}" Content="H3" Tag="h3" Click="Style_Click" ToolTip="标题3" FontWeight="Bold" />
+                                <Button Style="{StaticResource RBtnM}" Content="H4" Tag="h4" Click="Style_Click" ToolTip="标题4" FontWeight="Bold" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="样式" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Group: 编辑 -->
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnM}" Content="查找" Click="FindReplace_Click" ToolTip="查找替换 (Ctrl+F)" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="编辑" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Group: 排版 -->
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnAccent}" Command="{Binding AutoFormatChapterCommand}" ToolTip="自动清理格式、修正标点、统一缩进">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconMagicFormat}" />
+                                        <TextBlock Text="一键排版" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="排版" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ====== Tab: 插入 ====== -->
+            <TabItem Style="{StaticResource RibbonTab}" Header="插入">
+                <StackPanel Orientation="Horizontal" Background="Transparent" Height="82">
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnIconText}" Click="InsertImage_Click" ToolTip="插入图片">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconImage}" />
+                                        <TextBlock Text="插入图片" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource RBtnIconText}" Click="SetCover_Click" ToolTip="设置封面图片">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconBookCover}" />
+                                        <TextBlock Text="封面" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource RBtnAccent}" Click="ShowMetadata_Click" ToolTip="书籍元数据设置">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconInfo}" />
+                                        <TextBlock Text="书籍信息" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="图片" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnIconText}" Click="InsertAudio_Click" ToolTip="插入音频文件到当前章节">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconAudio}" />
+                                        <TextBlock Text="插入音频" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="媒体" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnIconText}" Click="Hyperlink_Click" ToolTip="插入超链接 (Ctrl+K)">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconLink}" />
+                                        <TextBlock Text="超链接" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="链接" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnIconText}" Click="HorizontalLine_Click" ToolTip="插入水平分隔线">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconHorizontalRule}" />
+                                        <TextBlock Text="水平线" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="页面" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnIconText}" Click="Table_Click" ToolTip="插入表格">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconTable}" />
+                                        <TextBlock Text="表格" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="表格" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ====== Tab: 章节 ====== -->
+            <TabItem Style="{StaticResource RibbonTab}" Header="章节">
+                <StackPanel Orientation="Horizontal" Background="Transparent" Height="82">
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnM}" Content="添加章节" Command="{Binding AddChapterCommand}" ToolTip="添加章节" />
+                                <Button Style="{StaticResource RBtnM}" Content="添加子章节" Command="{Binding AddSubChapterCommand}" ToolTip="添加子章节" />
+                                <Button Style="{StaticResource RBtnM}" Content="重命名" Command="{Binding RenameChapterCommand}" ToolTip="重命名" />
+                                <Button Style="{StaticResource RBtnM}" Content="删除" Command="{Binding DeleteChapterCommand}" ToolTip="删除章节" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="管理" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnM}" Content="上移" Command="{Binding MoveUpCommand}" ToolTip="上移" />
+                                <Button Style="{StaticResource RBtnM}" Content="下移" Command="{Binding MoveDownCommand}" ToolTip="下移" />
+                                <Button Style="{StaticResource RBtnM}" Content="缩进" Command="{Binding IndentCommand}" ToolTip="缩进" />
+                                <Button Style="{StaticResource RBtnM}" Content="取消缩进" Command="{Binding OutdentCommand}" ToolTip="取消缩进" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="排序" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnAccent}" Command="{Binding AutoSplitChapterCommand}" ToolTip="自动识别章节标记并切分当前章节">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconSplit}" />
+                                        <TextBlock Text="自动切分" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="智能" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ====== Tab: 输出 ====== -->
+            <TabItem Style="{StaticResource RibbonTab}" Header="输出">
+                <StackPanel Orientation="Horizontal" Background="Transparent" Height="82">
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource PrimaryButton}" Command="{Binding ExportEpubCommand}" ToolTip="生成 EPUB 文件">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconExport}" />
+                                        <TextBlock Text="生成 EPUB" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="EPUB" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnM}" Content="导出 TXT" Command="{Binding ExportTxtCommand}" ToolTip="导出为纯文本" />
+                                <Button Style="{StaticResource RBtnM}" Content="导出 HTML" Command="{Binding ExportHtmlCommand}" ToolTip="导出为 HTML" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="其他格式" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnIconText}" Click="EmbedFont_Click" ToolTip="嵌入字体到 EPUB">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconFont}" />
+                                        <TextBlock Text="嵌入字体" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="字体" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnM}" Content="新建" Command="{Binding NewProjectCommand}" ToolTip="新建项目" />
+                                <Button Style="{StaticResource RBtnM}" Content="打开" Command="{Binding OpenProjectCommand}" ToolTip="打开项目" />
+                                <Button Style="{StaticResource RBtnM}" Content="保存" Command="{Binding SaveProjectCommand}" ToolTip="保存项目" />
+                                <Button Style="{StaticResource RBtnM}" Content="导入 EPUB" Command="{Binding ImportEpubCommand}" ToolTip="导入已有 EPUB" />
+                                <Button Style="{StaticResource RBtnM}" Content="导入 TXT" Command="{Binding ImportTxtCommand}" ToolTip="导入纯文本 TXT" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="项目" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ====== Tab: 视图 ====== -->
+            <TabItem Style="{StaticResource RibbonTab}" Header="视图">
+                <StackPanel Orientation="Horizontal" Background="Transparent" Height="82">
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <ToggleButton x:Name="PreviewToggle" Style="{StaticResource RToggleM}" Content="预览模式"
+                                              IsChecked="{Binding IsPreviewMode, Mode=TwoWay}" ToolTip="编辑/预览切换" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="视图模式" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button x:Name="ToggleRibbonBtn" Style="{StaticResource RBtnM}" Content="折叠工具栏" Click="ToggleRibbon_Click" ToolTip="折叠/展开工具栏 (Ctrl+F1)" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="工具栏" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <Button Style="{StaticResource RBtnIconText}" Command="{Binding UndoCommand}" ToolTip="撤销 (Ctrl+Z)">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconUndo}" />
+                                        <TextBlock Text="撤销" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource RBtnIconText}" Command="{Binding RedoCommand}" ToolTip="重做 (Ctrl+Y)">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconRedo}" />
+                                        <TextBlock Text="重做" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="历史记录" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                <ComboBox x:Name="ThemeCombo"
+                                          Width="96"
+                                          SelectionChanged="ThemeCombo_SelectionChanged"
+                                          ToolTip="切换界面主题（重启后仍生效）">
+                                    <ComboBoxItem Tag="Light" Content="浅色" />
+                                    <ComboBoxItem Tag="Dark" Content="深色" />
+                                    <ComboBoxItem Tag="Sepia" Content="护眼" />
+                                </ComboBox>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="主题" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+
+        <!-- ====== 元数据栏（单行紧凑） ====== -->
+        <Border DockPanel.Dock="Top" Background="{DynamicResource SurfaceMuted}"
+                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1"
+                Padding="10,5">
+            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="书名" />
+                    <TextBox Text="{Binding BookTitle, UpdateSourceTrigger=PropertyChanged}" Width="200" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="作者" />
+                    <TextBox Text="{Binding BookAuthor, UpdateSourceTrigger=PropertyChanged}" Width="150" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="出版社" />
+                    <TextBox Text="{Binding BookPublisher, UpdateSourceTrigger=PropertyChanged}" Width="150" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="ISBN" />
+                    <TextBox Text="{Binding BookIsbn, UpdateSourceTrigger=PropertyChanged}" Width="150" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="语言" />
+                    <TextBox Text="{Binding BookLanguage, UpdateSourceTrigger=PropertyChanged}" Width="60" />
+                </StackPanel>
+            </WrapPanel>
+        </Border>
+
+        <!-- ====== 状态栏（带图标分区） ====== -->
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" />
+            </StatusBarItem>
+            <Separator />
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Path Style="{StaticResource IconPathStatic}" Data="{StaticResource IconBookCover}" Width="13" Height="13" Margin="0,0,5,0" />
+                    <TextBlock>
+                        <Run Text="{Binding ChapterCount}" />
+                        <Run Text=" 章" />
+                    </TextBlock>
+                </StackPanel>
+            </StatusBarItem>
+            <Separator />
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Path Style="{StaticResource IconPathStatic}" Data="{StaticResource IconBulletList}" Width="13" Height="13" Margin="0,0,5,0" />
+                    <TextBlock>
+                        <Run Text="{Binding WordCount}" />
+                        <Run Text=" 字" />
+                    </TextBlock>
+                </StackPanel>
+            </StatusBarItem>
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Path Style="{StaticResource IconPathStatic}" Data="{StaticResource IconFont}" Width="13" Height="13" Margin="0,0,5,0" />
+                    <TextBlock>
+                        <Run Text="{Binding CharCount}" />
+                        <Run Text=" 字符" />
+                    </TextBlock>
+                </StackPanel>
+            </StatusBarItem>
+
+            <!-- 右侧：视图缩放（WPS 风格） -->
+            <Separator />
+            <StatusBarItem HorizontalAlignment="Right">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="ZoomOutBtn" Style="{StaticResource GhostIconButton}" ToolTip="缩小" Click="ZoomOut_Click">
+                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconZoomOut}" />
+                    </Button>
+                    <TextBlock x:Name="ZoomLabel" Text="100%" VerticalAlignment="Center" Margin="8,0"
+                               FontFamily="{StaticResource FontUI}" FontSize="{StaticResource FontSizeSm}"
+                               Foreground="{DynamicResource TextSecondary}" />
+                    <Button x:Name="ZoomInBtn" Style="{StaticResource GhostIconButton}" ToolTip="放大" Click="ZoomIn_Click">
+                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconZoomIn}" />
+                    </Button>
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource BorderSubtle}" Margin="8,0" />
+                    <Button Style="{StaticResource GhostIconButton}" ToolTip="适应宽度 (100%)" Click="ZoomFit_Click">
+                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconCollapse}" />
+                    </Button>
+                </StackPanel>
+            </StatusBarItem>
+        </StatusBar>
+
+        <!-- ====== 主内容区：左章节树 + 右编辑/预览区 ====== -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280" MinWidth="200" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- 左侧：章节树 -->
+            <DockPanel Grid.Column="0">
+                <!-- 章节树面板头 -->
+                <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Style="{StaticResource IconPathStatic}" Data="{StaticResource IconBookCover}" Width="16" Height="16" Margin="0,0,7,0" />
+                            <TextBlock Style="{StaticResource PanelTitle}" Text="章节目录" />
+                            <Border Style="{StaticResource CountBadge}">
+                                <TextBlock Style="{StaticResource CountBadgeText}" Text="{Binding Chapters.Count}" />
+                            </Border>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Style="{StaticResource GhostIconButton}" ToolTip="添加章节" Command="{Binding AddChapterCommand}">
+                                <Path Style="{StaticResource IconPath}" Data="{StaticResource IconAdd}" />
+                            </Button>
+                            <Button Style="{StaticResource GhostDangerButton}" ToolTip="删除章节" Command="{Binding DeleteChapterCommand}">
+                                <Path Style="{StaticResource IconPath}" Data="{StaticResource IconTrash}" />
+                            </Button>
+                            <Button Style="{StaticResource GhostIconButton}" ToolTip="上移" Command="{Binding MoveUpCommand}">
+                                <Path Style="{StaticResource IconPath}" Data="{StaticResource IconArrowUp}" />
+                            </Button>
+                            <Button Style="{StaticResource GhostIconButton}" ToolTip="下移" Command="{Binding MoveDownCommand}">
+                                <Path Style="{StaticResource IconPath}" Data="{StaticResource IconArrowDown}" />
+                            </Button>
+                            <Button Style="{StaticResource GhostIconButton}" ToolTip="缩进" Command="{Binding IndentCommand}">
+                                <Path Style="{StaticResource IconPath}" Data="{StaticResource IconIndentMore}" />
+                            </Button>
+                            <Button Style="{StaticResource GhostIconButton}" ToolTip="取消缩进" Command="{Binding OutdentCommand}">
+                                <Path Style="{StaticResource IconPath}" Data="{StaticResource IconIndentLess}" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 章节树 / 空状态 -->
+                <Grid>
+                    <TreeView x:Name="ChapterTree"
+                              ItemsSource="{Binding Chapters}"
+                              ItemTemplate="{StaticResource ChapterTemplate}"
+                              SelectedItemChanged="ChapterTree_SelectedItemChanged"
+                              MouseDoubleClick="ChapterTree_MouseDoubleClick"
+                              KeyDown="ChapterTree_KeyDown"
+                              PreviewMouseLeftButtonDown="ChapterTree_PreviewMouseLeftButtonDown"
+                              PreviewMouseMove="ChapterTree_PreviewMouseMove"
+                              AllowDrop="True"
+                              DragEnter="ChapterTree_DragEnter"
+                              DragOver="ChapterTree_DragOver"
+                              Drop="ChapterTree_Drop"
+                              BorderThickness="0"
+                              Visibility="{Binding Chapters.Count, Converter={StaticResource CountToVisibility}}">
+                        <TreeView.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="添加章节" Command="{Binding AddChapterCommand}" />
+                                <MenuItem Header="添加子章节" Command="{Binding AddSubChapterCommand}" />
+                                <Separator />
+                                <MenuItem Header="重命名 (F2)" Command="{Binding RenameChapterCommand}" />
+                                <Separator />
+                                <MenuItem Header="上移" Command="{Binding MoveUpCommand}" />
+                                <MenuItem Header="下移" Command="{Binding MoveDownCommand}" />
+                                <Separator />
+                                <MenuItem Header="缩进" Command="{Binding IndentCommand}" />
+                                <MenuItem Header="取消缩进" Command="{Binding OutdentCommand}" />
+                                <Separator />
+                                <MenuItem Header="自动切分章节" Command="{Binding AutoSplitChapterCommand}" />
+                                <Separator />
+                                <MenuItem Header="一键排版" Command="{Binding AutoFormatChapterCommand}" />
+                                <Separator />
+                                <MenuItem Header="删除章节" Command="{Binding DeleteChapterCommand}" />
+                            </ContextMenu>
+                        </TreeView.ContextMenu>
+                    </TreeView>
+
+                    <!-- 空状态引导 -->
+                    <Border Background="{DynamicResource SurfaceSunken}"
+                            Visibility="{Binding Chapters.Count, Converter={StaticResource CountToVisibility}, ConverterParameter=Inverse}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24">
+                            <Path Style="{StaticResource IconPathStatic}" Data="{StaticResource IconEmptyBook}"
+                                  Width="64" Height="64" StrokeThickness="2" Stroke="{DynamicResource TextTertiary}"
+                                  Margin="0,0,0,14" />
+                            <TextBlock Text="还没有章节" FontFamily="{StaticResource FontUI}"
+                                       FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Center" />
+                            <TextBlock Text="点击下方按钮开始创作，或导入 TXT / EPUB 快速生成目录"
+                                       FontFamily="{StaticResource FontUI}" FontSize="{StaticResource FontSizeBase}"
+                                       Foreground="{DynamicResource TextSecondary}" HorizontalAlignment="Center"
+                                       Margin="0,6,0,0" TextWrapping="Wrap" MaxWidth="240" TextAlignment="Center" />
+                            <Button Style="{StaticResource PrimaryButton}" Content="添加第一章"
+                                    Command="{Binding AddChapterCommand}" Margin="0,16,0,0" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </DockPanel>
+
+            <!-- 分割条 -->
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch" />
+
+            <!-- 右侧：编辑/预览区 -->
+            <DockPanel Grid.Column="2">
+                <!-- 章节标题栏 -->
+                <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Path Style="{StaticResource IconPathStatic}" Data="{StaticResource IconBookCover}" Width="15" Height="15" Margin="0,0,7,0" />
+                        <TextBlock x:Name="CurrentChapterLabel" Text="（未选择章节）" Style="{StaticResource PanelTitle}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 查找替换栏（默认隐藏） -->
+                <Border x:Name="FindReplaceBar" DockPanel.Dock="Top" Background="{DynamicResource SurfaceRaised}" Padding="8,4"
+                        BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Visibility="Collapsed">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                            <TextBlock Text="查找：" VerticalAlignment="Center" Width="40" />
+                            <TextBox x:Name="FindTextBox" Width="250" KeyDown="FindTextBox_KeyDown" />
+                            <Button Style="{StaticResource RBtnM}" Content="下一个" Margin="4,0,0,0" Click="FindNext_Click" />
+                            <Button Style="{StaticResource RBtnM}" Content="上一个" Margin="4,0,0,0" Click="FindPrev_Click" />
+                            <Button Style="{StaticResource RBtnM}" Content="×" Width="28" Margin="4,0,0,0" Click="CloseFindReplace_Click" ToolTip="关闭" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="替换：" VerticalAlignment="Center" Width="40" />
+                            <TextBox x:Name="ReplaceTextBox" Width="250" />
+                            <Button Style="{StaticResource RBtnM}" Content="替换" Margin="4,0,0,0" Click="ReplaceOne_Click" />
+                            <Button Style="{StaticResource RBtnM}" Content="全部替换" Margin="4,0,0,0" Click="ReplaceAll_Click" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 编辑区（编辑模式时可见） -->
+                <RichTextBox x:Name="Editor"
+                             Foreground="{DynamicResource TextPrimary}"
+                             Background="{DynamicResource SurfaceBase}"
+                             AcceptsReturn="True"
+                             AcceptsTab="True"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Auto"
+                             FontFamily="宋体"
+                             FontSize="16"
+                             Padding="24,12"
+                             BorderThickness="0"
+                             IsEnabled="False"
+                             Visibility="{Binding IsPreviewMode, Converter={StaticResource InverseBoolToVis}}"
+                             SelectionChanged="Editor_SelectionChanged" />
+
+                <!-- 预览区（预览模式时可见） -->
+                <wv2:WebView2 x:Name="PreviewViewer"
+                              Visibility="{Binding IsPreviewMode, Converter={StaticResource BoolToVis}}"
+                              DefaultBackgroundColor="White" />
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>

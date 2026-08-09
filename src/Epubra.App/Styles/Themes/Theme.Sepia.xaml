@@ -1,0 +1,70 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+    <!--
+    ============================================================
+      Epubra 主题 · 护眼 (Sepia) — WPS 蓝
+      ==============================
+      暖纸底 + 深墨字，模拟纸书阅读观感。主强调色采用偏深的
+      WPS 蓝 #2B6FE0，在暖纸底上保持足够对比。
+    ============================================================
+    -->
+
+    <!-- == 表面 Surface == -->
+    <SolidColorBrush x:Key="SurfaceBase" Color="#FFF7EFDD" />
+    <SolidColorBrush x:Key="SurfaceSunken" Color="#FFF2E8D2" />
+    <SolidColorBrush x:Key="SurfaceRaised" Color="#FFFBF4E6" />
+    <SolidColorBrush x:Key="SurfaceMuted" Color="#FFEFE3C9" />
+    <SolidColorBrush x:Key="SurfaceOverlay" Color="#FFFCF6EA" />
+    <SolidColorBrush x:Key="SurfaceAccentSubtle" Color="#FFE3ECF7" />
+
+    <!-- == 描边 Border == -->
+    <SolidColorBrush x:Key="BorderSubtle" Color="#FFE3D5B8" />
+    <SolidColorBrush x:Key="BorderDefault" Color="#FFD8C7A3" />
+    <SolidColorBrush x:Key="BorderStrong" Color="#FFC9B58C" />
+    <SolidColorBrush x:Key="BorderAccent" Color="#FF2B6FE0" />
+
+    <!-- == 文本 Text == -->
+    <SolidColorBrush x:Key="TextPrimary" Color="#FF463C2A" />
+    <SolidColorBrush x:Key="TextSecondary" Color="#FF6B5E44" />
+    <SolidColorBrush x:Key="TextTertiary" Color="#FF8A7B5C" />
+    <SolidColorBrush x:Key="TextPlaceholder" Color="#FFA99A78" />
+    <SolidColorBrush x:Key="TextDisabled" Color="#FFBBA98A" />
+    <SolidColorBrush x:Key="TextAccent" Color="#FF1A4FA0" />
+    <SolidColorBrush x:Key="TextOnAccent" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="TextDanger" Color="#FFB23A3A" />
+
+    <!-- == 强调 Accent == -->
+    <SolidColorBrush x:Key="AccentDefault" Color="#FF2B6FE0" />
+    <SolidColorBrush x:Key="AccentHover" Color="#FF1A4CA8" />
+    <SolidColorBrush x:Key="AccentPressed" Color="#FF143A6E" />
+    <SolidColorBrush x:Key="AccentDisabled" Color="#FFD8C7A3" />
+
+    <!-- == 交互状态 State == -->
+    <SolidColorBrush x:Key="StateHover" Color="#FFEFE3C9" />
+    <SolidColorBrush x:Key="StatePressed" Color="#FFE6D7B6" />
+    <SolidColorBrush x:Key="StateSelected" Color="#FFE3ECF7" />
+    <SolidColorBrush x:Key="StateSelectedHover" Color="#FFD5E2F0" />
+    <SolidColorBrush x:Key="FocusRing" Color="#FF2B6FE0" />
+
+    <!-- == 语义反馈 Feedback == -->
+    <SolidColorBrush x:Key="FeedbackSuccess" Color="#FF2F8A3E" />
+    <SolidColorBrush x:Key="FeedbackSuccessBg" Color="#FFEAF3E5" />
+    <SolidColorBrush x:Key="FeedbackWarning" Color="#FFB5560C" />
+    <SolidColorBrush x:Key="FeedbackWarningBg" Color="#FFFAEAD2" />
+    <SolidColorBrush x:Key="FeedbackDanger" Color="#FFB23A3A" />
+    <SolidColorBrush x:Key="FeedbackDangerBg" Color="#FFF6E6E6" />
+
+    <SolidColorBrush x:Key="TransparentBrush" Color="Transparent" />
+
+    <!-- == 标题栏 TitleBar（随主题切换） == -->
+    <SolidColorBrush x:Key="TitleBarBrush" Color="#FF2B6FE0" />
+    <SolidColorBrush x:Key="TitleBarButtonHover" Color="#FF4D94FF" />
+    <SolidColorBrush x:Key="TitleBarButtonCloseHover" Color="#FFE54848" />
+    <SolidColorBrush x:Key="TitleBarForeground" Color="#FFFFFFFF" />
+
+    <!-- 主题字典标记：供 ThemeService 定位并热替换当前主题字典 -->
+    <sys:Boolean x:Key="__ThemeDictionary__">True</sys:Boolean>
+
+</ResourceDictionary>
