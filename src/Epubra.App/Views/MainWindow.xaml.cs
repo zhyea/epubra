@@ -44,6 +44,8 @@ public partial class MainWindow : Window
 
         // 挂钩 SourceInitialized 以处理 WM_GETMINMAXINFO（最大化不覆盖任务栏）
         SourceInitialized += OnSourceInitialized;
+        // 窗口状态变化（最大化/还原/最小化）时同步右上角按钮图标，确保图标与状态一致
+        StateChanged += (_, _) => SyncMaxRestoreIcon();
 
         // 预览内容重新加载后以当前缩放重新应用
         PreviewViewer.NavigationCompleted += (_, _) => _ = ApplyPreviewZoom();
@@ -141,17 +143,11 @@ public partial class MainWindow : Window
             : "工具栏已展开";
     }
 
-    /// <summary>更新工具栏可视状态。</summary>
+    /// <summary>更新工具栏可视状态（折叠/展开）。折叠/还原入口现位于应用菜单。</summary>
     private void UpdateRibbonState()
     {
         var showExpanded = !_isRibbonCollapsed || _isRibbonTempExpanded;
-
         RibbonTabs.Height = showExpanded ? double.NaN : CollapsedRibbonHeight;
-
-        // 按钮和菜单文本随状态变化
-        var label = _isRibbonCollapsed ? "展开工具栏" : "折叠工具栏";
-        ToggleRibbonBtn.Content = label;
-        ToggleRibbonMenuItem.Header = $"{label}(_R)";
     }
 
     /// <summary>按钮/菜单点击切换。</summary>
@@ -1393,6 +1389,13 @@ public partial class MainWindow : Window
         UpdateToggleStates();
     }
 
+    /// <summary>编辑器内容变化（输入/粘贴/撤销等）→ 标记为已修改。</summary>
+    private void Editor_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (!Editor.IsEnabled) return;
+        ViewModel.NotifyChapterContentChanged();
+    }
+
     /// <summary>根据当前选区更新工具栏 Toggle 按钮状态。</summary>
     private void UpdateToggleStates()
     {
@@ -1577,16 +1580,26 @@ public partial class MainWindow : Window
         return false;
     }
 
-    private void Minimize_Click(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
+    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void Close_Click(object sender, RoutedEventArgs e) => SystemCommands.CloseWindow(this);
     private void MaximizeRestore_Click(object sender, RoutedEventArgs e) => ToggleMaximizeRestore();
 
+    /// <summary>标题栏应用菜单按钮：点击展开承载 关于/退出 等独有项的小菜单。</summary>
+    private void AppMenuButton_Click(object sender, RoutedEventArgs e)
+    {
+        var btn = (Button)sender;
+        if (btn.ContextMenu == null) return;
+        btn.ContextMenu.PlacementTarget = btn;
+        btn.ContextMenu.IsOpen = true;
+    }
+
     private void ToggleMaximizeRestore()
     {
-        if (WindowState == WindowState.Maximized)
-            SystemCommands.RestoreWindow(this);
-        else
-            SystemCommands.MaximizeWindow(this);
+        // 直接设置 WindowState：无边框窗口下 SystemCommands 发送的 WM_SYSCOMMAND
+        // 会被忽略，导致窗口无法真正最大化/还原。
+        WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
         SyncMaxRestoreIcon();
     }
 
