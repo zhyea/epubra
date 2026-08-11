@@ -252,4 +252,194 @@ public class ChapterSplitterTests
         ChapterSplitter.IsChapterMarkerLine("第一章的内容是这样的").Should().BeFalse();
         ChapterSplitter.IsChapterMarkerLine("").Should().BeFalse();
     }
+
+    // ===== Split(text, SplitOptions) 规则配置测试 =====
+
+    [Fact]
+    public void 拆分_智能规则_默认阈值_正常切分()
+    {
+        var text = "第一章 开始\n第一段内容。\n\n第二章 发展\n第二段内容。";
+        var options = new ChapterSplitter.SplitOptions(
+            SmartEnabled: true,
+            MaxTitleLength: 40);
+
+        var segments = _splitter.Split(text, options);
+
+        segments.Should().HaveCount(2);
+        segments[0].Title.Should().Be("第一章");
+        segments[1].Title.Should().Be("第二章");
+    }
+
+    [Fact]
+    public void 拆分_智能规则_标题超过阈值_不切分()
+    {
+        // 构造一个 > 40 字符的"标题行"，应被阈值过滤掉
+        var longTitle = "第一章 " + new string('字', 50);
+        var text = $"{longTitle}\n这是正文内容。";
+
+        var options = new ChapterSplitter.SplitOptions(
+            SmartEnabled: true,
+            MaxTitleLength: 40);
+
+        var segments = _splitter.Split(text, options);
+
+        // 长标题行被视为正文 → 无切分点 → 兜底为单段
+        segments.Should().HaveCount(1);
+        segments[0].Title.Should().Be("正文");
+    }
+
+    [Fact]
+    public void 拆分_智能规则关闭_仅按其他规则()
+    {
+        var text = "第一章 开始\n第一段。\n\n第二章 发展\n第二段。";
+
+        var options = new ChapterSplitter.SplitOptions(SmartEnabled: false);
+
+        var segments = _splitter.Split(text, options);
+
+        // 关闭智能 + 无其他规则 → 兜底按段落拆分
+        segments.Should().HaveCount(2);
+        segments[0].Title.Should().Be("章节 1");
+        segments[1].Title.Should().Be("章节 2");
+    }
+
+    [Fact]
+    public void 拆分_等长规则_按字节数切分()
+    {
+        // 构造长文本（每段约 30 字节的汉字短语）
+        var sb = new System.Text.StringBuilder();
+        for (var i = 0; i < 30; i++)
+        {
+            sb.Append("这是一段用于填充的文本内容用于凑够字节数。");
+        }
+        var text = sb.ToString();
+
+        var options = new ChapterSplitter.SplitOptions(
+            SmartEnabled: false,
+            EqualLengthEnabled: true,
+            EqualByteLength: 200);
+
+        var segments = _splitter.Split(text, options);
+
+        segments.Count.Should().BeGreaterThan(3);
+    }
+
+    [Fact]
+    public void 拆分_等长规则关闭_不切分()
+    {
+        var text = new string('中', 1000); // 1000 个汉字 = 3000 字节
+
+        var options = new ChapterSplitter.SplitOptions(
+            SmartEnabled: false,
+            EqualLengthEnabled: false);
+
+        var segments = _splitter.Split(text, options);
+
+        segments.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void 拆分_特征规则_字面量匹配()
+    {
+        var text = "正文开始\n内容1。\n\n=== 分割线 ===\n内容2。\n\n=== 分割线 ===\n内容3。";
+
+        var options = new ChapterSplitter.SplitOptions(
+            SmartEnabled: false,
+            FeatureEnabled: true,
+            FeaturePattern: "=== 分割线 ===");
+
+        var segments = _splitter.Split(text, options);
+
+        segments.Should().HaveCount(3);
+        segments[0].Content.Should().Contain("正文开始");
+        segments[1].Content.Should().Contain("内容2");
+        segments[2].Content.Should().Contain("内容3");
+    }
+
+    [Fact]
+    public void 拆分_特征规则_正则匹配()
+    {
+        var text = "起始段落\n第一章 标题\n第一章内容。\n\n第二章 标题\n第二章内容。";
+
+        var options = new ChapterSplitter.SplitOptions(
+            SmartEnabled: false,
+            FeatureEnabled: true,
+            FeaturePattern: @"^第\S+章\s");
+
+        var segments = _splitter.Split(text, options);
+
+        segments.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void 拆分_特征规则_非法正则_按字面量匹配不抛异常()
+    {
+        // 单个 [ 在正则中非法，应降级为字面量包含匹配
+        var text = "正文\n[特殊标记] 第一节\n第一节内容。\n[特殊标记] 第二节\n第二节内容。";
+
+        var options = new ChapterSplitter.SplitOptions(
+            SmartEnabled: false,
+            FeatureEnabled: true,
+            FeaturePattern: "[特殊标记]");
+
+        var act = () => _splitter.Split(text, options);
+
+        act.Should().NotThrow();
+        var segments = _splitter.Split(text, options);
+        segments.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void 拆分_特征规则_空字符串_视为未启用()
+    {
+        var text = "第一章 开始\n内容。";
+
+        var options = new ChapterSplitter.SplitOptions(
+            SmartEnabled: false,
+            FeatureEnabled: true,
+            FeaturePattern: "");
+
+        var segments = _splitter.Split(text, options);
+
+        segments.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void 拆分_三规则组合_智能与特征合并切分点()
+    {
+        var text = "第一章 开始\n第一段。\n\n第二章 发展\n第二段。\n\n---END---\n末尾。";
+
+        // 智能识别 2 个章节，特征"---END---"追加第 3 个切分点
+        var options = new ChapterSplitter.SplitOptions(
+            SmartEnabled: true,
+            MaxTitleLength: 40,
+            FeatureEnabled: true,
+            FeaturePattern: "---END---");
+
+        var segments = _splitter.Split(text, options);
+
+        segments.Should().HaveCount(3);
+        segments[0].Title.Should().Be("第一章");
+        segments[1].Title.Should().Be("第二章");
+        segments[2].Title.Should().Contain("---END---");
+    }
+
+    [Fact]
+    public void 拆分_空文本_返回默认正文段()
+    {
+        var segments = _splitter.Split("", new ChapterSplitter.SplitOptions());
+        segments.Should().HaveCount(1);
+        segments[0].Title.Should().Be("正文");
+    }
+
+    [Fact]
+    public void 拆分_默认options_等同无参数Split()
+    {
+        var text = "第一章 开始\n第一段内容。\n\n第二章 发展\n第二段内容。";
+
+        var segA = _splitter.Split(text);
+        var segB = _splitter.Split(text, new ChapterSplitter.SplitOptions());
+
+        segA.Should().BeEquivalentTo(segB);
+    }
 }

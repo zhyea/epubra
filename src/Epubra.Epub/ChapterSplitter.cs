@@ -29,10 +29,35 @@ public sealed class ChapterSplitter
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
     /// <summary>
+    /// 章节切分规则配置。多个规则可同时启用，按切分点位置合并去重。
+    /// </summary>
+    /// <param name="SmartEnabled">智能规则：按章节标记模式（中文章节/特殊/英文）切分。</param>
+    /// <param name="MaxTitleLength">智能规则标题长度阈值：只把整行文本长度 ≤ 该值的视为章节标记。</param>
+    /// <param name="EqualLengthEnabled">等长规则：按字节数强制切分。</param>
+    /// <param name="EqualByteLength">等长字节数阈值（UTF-8 编码）。</param>
+    /// <param name="FeatureEnabled">特征规则：按用户提供的字符串/正则切分。</param>
+    /// <param name="FeaturePattern">特征字符串或正则。合法正则按正则匹配，否则按字面量包含匹配。</param>
+    public sealed record SplitOptions(
+        bool SmartEnabled = true,
+        int MaxTitleLength = 40,
+        bool EqualLengthEnabled = false,
+        int EqualByteLength = 500_000,
+        bool FeatureEnabled = false,
+        string? FeaturePattern = null);
+
+    /// <summary>
     /// 从纯文本中识别章节标记并切分。
     /// 返回按出现顺序排列的章节段列表。如果未识别到任何标记，返回包含整个文本的单个段。
     /// </summary>
     public List<ChapterSegment> Split(string text)
+    {
+        return Split(text, new SplitOptions());
+    }
+
+    /// <summary>
+    /// 按指定规则配置切分章节。多个规则并行收集切分点，去重排序后切分。
+    /// </summary>
+    public List<ChapterSegment> Split(string text, SplitOptions options)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -42,23 +67,37 @@ public sealed class ChapterSplitter
         // 规范化换行
         text = text.Replace("\r\n", "\n").Replace('\r', '\n');
 
-        // 收集所有章节标记的位置
-        var markers = CollectMarkers(text);
+        // 收集所有启用的规则产生的切分点
+        var breakPoints = new SortedSet<int>();
+        if (options.SmartEnabled)
+        {
+            foreach (var idx in CollectSmartMarkerIndices(text, options.MaxTitleLength))
+            {
+                breakPoints.Add(AdjustToLineStart(text, idx));
+            }
+        }
+        if (options.FeatureEnabled && !string.IsNullOrWhiteSpace(options.FeaturePattern))
+        {
+            foreach (var idx in CollectFeatureIndices(text, options.FeaturePattern!))
+            {
+                breakPoints.Add(AdjustToLineStart(text, idx));
+            }
+        }
+        if (options.EqualLengthEnabled && options.EqualByteLength > 0)
+        {
+            foreach (var idx in CollectEqualLengthIndices(text, options.EqualByteLength))
+            {
+                breakPoints.Add(idx);
+            }
+        }
 
-        // 没有标记 → 尝试按双换行拆分
-        if (markers.Count == 0)
+        // 没有切分点 → 兜底：按段落拆分
+        if (breakPoints.Count == 0)
         {
             return SplitByParagraphs(text);
         }
 
-        // 只有一个标记 → 前面内容作为引言
-        if (markers.Count == 1)
-        {
-            return SplitSingleMarker(text, markers[0]);
-        }
-
-        // 多个标记 → 按标记切分
-        return SplitMultipleMarkers(text, markers);
+        return SplitAtBreakPoints(text, breakPoints);
     }
 
     /// <summary>
@@ -159,32 +198,171 @@ public sealed class ChapterSplitter
 
     // ===== 内部方法 =====
 
-    /// <summary>收集所有章节标记（中文+特殊+英文），按位置排序。</summary>
-    private List<Marker> CollectMarkers(string text)
+    /// <summary>XML 实体转义。</summary>
+    private static string EscapeXml(string text)
     {
-        var markers = new List<Marker>();
-
-        foreach (Match m in ChineseChapterPattern.Matches(text))
-        {
-            markers.Add(new Marker(m.Index, m.Value.Trim(), m.Length));
-        }
-
-        foreach (Match m in SpecialChapterPattern.Matches(text))
-        {
-            markers.Add(new Marker(m.Index, m.Value.Trim(), m.Length));
-        }
-
-        foreach (Match m in EnglishChapterPattern.Matches(text))
-        {
-            markers.Add(new Marker(m.Index, m.Value.Trim(), m.Length));
-        }
-
-        // 按位置排序
-        markers.Sort((a, b) => a.Index.CompareTo(b.Index));
-        return markers;
+        return System.Net.WebUtility.HtmlEncode(text);
     }
 
-    /// <summary>无章节标记时，尝试按双换行拆分。无法拆分则整体作为一个段。</summary>
+    /// <summary>把任意字符位置调整到所在行的开头（章节切分应按行进行）。</summary>
+    private static int AdjustToLineStart(string text, int pos)
+    {
+        if (pos <= 0) return 0;
+        var safePos = Math.Min(pos, text.Length);
+        var lineStart = text.LastIndexOf('\n', safePos - 1);
+        return lineStart < 0 ? 0 : lineStart + 1;
+    }
+
+    /// <summary>返回 pos 所在行的字符长度（含标题原始长度）。</summary>
+    private static int LineLengthAt(string text, int pos)
+    {
+        if (text.Length == 0) return 0;
+        int lineStart;
+        if (pos <= 0)
+        {
+            lineStart = 0;
+        }
+        else
+        {
+            var safePos = Math.Min(pos, text.Length);
+            var ls = text.LastIndexOf('\n', safePos - 1);
+            lineStart = ls < 0 ? 0 : ls + 1;
+        }
+        var lineEnd = text.IndexOf('\n', lineStart);
+        if (lineEnd < 0) lineEnd = text.Length;
+        return lineEnd - lineStart;
+    }
+
+    /// <summary>智能规则：收集章节标记行的起始位置，受 MaxTitleLength 阈值约束。</summary>
+    private static IEnumerable<int> CollectSmartMarkerIndices(string text, int maxTitleLength)
+    {
+        foreach (Match m in ChineseChapterPattern.Matches(text))
+        {
+            if (LineLengthAt(text, m.Index) <= maxTitleLength) yield return m.Index;
+        }
+        foreach (Match m in SpecialChapterPattern.Matches(text))
+        {
+            if (LineLengthAt(text, m.Index) <= maxTitleLength) yield return m.Index;
+        }
+        foreach (Match m in EnglishChapterPattern.Matches(text))
+        {
+            if (LineLengthAt(text, m.Index) <= maxTitleLength) yield return m.Index;
+        }
+    }
+
+    /// <summary>特征规则：按用户字符串或正则收集切分点。合法正则按正则，否则按字面量包含。</summary>
+    private static IEnumerable<int> CollectFeatureIndices(string text, string pattern)
+    {
+        Regex? regex = null;
+        try
+        {
+            regex = new Regex(pattern, RegexOptions.Multiline);
+        }
+        catch (ArgumentException)
+        {
+            // 非合法正则，按字面量包含匹配
+        }
+
+        if (regex != null)
+        {
+            foreach (Match m in regex.Matches(text))
+                yield return m.Index;
+            yield break;
+        }
+
+        var idx = 0;
+        while (idx < text.Length)
+        {
+            var found = text.IndexOf(pattern, idx, StringComparison.Ordinal);
+            if (found < 0) yield break;
+            yield return found;
+            idx = found + Math.Max(1, pattern.Length);
+        }
+    }
+
+    /// <summary>等长规则：按 UTF-8 字节数累积，超过阈值则在该位置切分。</summary>
+    private static IEnumerable<int> CollectEqualLengthIndices(string text, int byteLength)
+    {
+        var encoding = Encoding.UTF8;
+        var accumulated = 0;
+        for (var i = 0; i < text.Length; i++)
+        {
+            var chBytes = encoding.GetByteCount(new[] { text[i] });
+            if (accumulated + chBytes > byteLength && i > 0)
+            {
+                yield return i;
+                accumulated = 0;
+            }
+            accumulated += chBytes;
+        }
+    }
+
+    /// <summary>按切分点列表切分文本，每个切分点所在行作为新章节标题。</summary>
+    private static List<ChapterSegment> SplitAtBreakPoints(string text, SortedSet<int> breakPoints)
+    {
+        var result = new List<ChapterSegment>();
+        var sorted = breakPoints.ToList();
+
+        for (var i = 0; i < sorted.Count; i++)
+        {
+            var start = sorted[i];
+            var end = i + 1 < sorted.Count ? sorted[i + 1] : text.Length;
+
+            // 标题：切分点所在行的章节标记部分（若是），否则整行
+            var title = ExtractLineTitle(text, start, out int markerEnd);
+            if (string.IsNullOrWhiteSpace(title))
+                title = $"章节 {i + 1}";
+
+            // 内容：从标记结束位置开始（含标题行标记后的同行文字）；
+            //       若该行非标记行，则从整行结束之后开始
+            var lineEnd = text.IndexOf('\n', start);
+            var contentStart = markerEnd >= 0 ? markerEnd + 1 : (lineEnd >= 0 ? lineEnd + 1 : start);
+            var content = contentStart < end ? text[contentStart..end].Trim() : string.Empty;
+
+            result.Add(new ChapterSegment(title, content));
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 提取 pos 所在行作为章节标题（去前后空白）。
+    /// 若该行为章节标记行，只返回匹配的模式部分（如「第一章」）；否则返回整行。
+    /// markerEnd 返回标记在文本中的结束位置（绝对索引）；无标记时为 -1。
+    /// </summary>
+    private static string ExtractLineTitle(string text, int pos, out int markerEnd)
+    {
+        if (text.Length == 0) { markerEnd = -1; return string.Empty; }
+        int lineStart;
+        if (pos <= 0)
+        {
+            lineStart = 0;
+        }
+        else
+        {
+            var safePos = Math.Min(pos, text.Length);
+            var ls = text.LastIndexOf('\n', safePos - 1);
+            lineStart = ls < 0 ? 0 : ls + 1;
+        }
+        var lineEnd = text.IndexOf('\n', lineStart);
+        if (lineEnd < 0) lineEnd = text.Length;
+        var line = text[lineStart..lineEnd];
+
+        // 若该行为章节标记行，只取匹配的模式部分作为标题
+        var m = ChineseChapterPattern.Match(line);
+        if (!m.Success) m = SpecialChapterPattern.Match(line);
+        if (!m.Success) m = EnglishChapterPattern.Match(line);
+        if (m.Success)
+        {
+            markerEnd = lineStart + m.Index + m.Length;
+            return m.Value;
+        }
+
+        markerEnd = -1;
+        return line.Trim();
+    }
+
+    /// <summary>无切分点时按段落拆分（兜底）。</summary>
     private static List<ChapterSegment> SplitByParagraphs(string text)
     {
         var paragraphs = text.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
@@ -197,59 +375,6 @@ public sealed class ChapterSplitter
 
         return new List<ChapterSegment> { new("正文", text.Trim()) };
     }
-
-    /// <summary>只有一个章节标记时：标记前的内容作为引言，标记后的内容作为该章节正文。</summary>
-    private static List<ChapterSegment> SplitSingleMarker(string text, Marker marker)
-    {
-        var title = marker.Title;
-        var contentStart = marker.Index + marker.MatchLength;
-        var content = contentStart < text.Length
-            ? text[contentStart..].Trim()
-            : string.Empty;
-
-        var preContent = text[..marker.Index].Trim();
-        if (!string.IsNullOrWhiteSpace(preContent))
-        {
-            return new List<ChapterSegment>
-            {
-                new("引言", preContent),
-                new(title, content)
-            };
-        }
-
-        return new List<ChapterSegment> { new(title, content) };
-    }
-
-    /// <summary>多个章节标记时：按标记位置切分，每个标记到下一个标记之间的文本为该章节内容。</summary>
-    private static List<ChapterSegment> SplitMultipleMarkers(string text, List<Marker> markers)
-    {
-        var result = new List<ChapterSegment>();
-
-        for (var i = 0; i < markers.Count; i++)
-        {
-            var marker = markers[i];
-            var contentStart = marker.Index + marker.MatchLength + 1; // +1 for newline after title
-            if (contentStart >= text.Length) contentStart = text.Length;
-
-            var end = i + 1 < markers.Count ? markers[i + 1].Index : text.Length;
-            var content = contentStart < end
-                ? text[contentStart..end].Trim()
-                : string.Empty;
-
-            result.Add(new ChapterSegment(marker.Title, content));
-        }
-
-        return result;
-    }
-
-    /// <summary>XML 实体转义。</summary>
-    private static string EscapeXml(string text)
-    {
-        return System.Net.WebUtility.HtmlEncode(text);
-    }
-
-    /// <summary>章节标记位置信息。</summary>
-    private readonly record struct Marker(int Index, string Title, int MatchLength);
 }
 
 /// <summary>切分后的章节段：标题 + 纯文本内容。</summary>

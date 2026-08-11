@@ -17,5 +17,6 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);**/obj_bak/**;**/bin_bak/**</DefaultItemExcludes>
     <BaseIntermediateOutputPath>C:\epubra_bld\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
     <OutputPath>C:\epubra_bld\$(MSBuildProjectName)\bin\$(Configuration)\</OutputPath>
+    <NoWarn>$(NoWarn);NU1603</NoWarn>
   </PropertyGroup>
 </Project>

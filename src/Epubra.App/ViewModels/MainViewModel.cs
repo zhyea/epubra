@@ -39,7 +39,32 @@ public partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(DemoteChapterCommand))]
     [NotifyCanExecuteChangedFor(nameof(MergeChaptersCommand))]
     [NotifyCanExecuteChangedFor(nameof(ManualSplitChapterCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StartSplitCommand))]
     private ChapterNode? _selectedChapter;
+
+    // ===== 编辑 Tab · 拆分章节规则配置 =====
+
+    [ObservableProperty]
+    private bool _splitSmartEnabled = true;
+
+    [ObservableProperty]
+    private int _splitMaxTitleLength = 40;
+
+    [ObservableProperty]
+    private bool _splitEqualLengthEnabled;
+
+    [ObservableProperty]
+    private int _splitByteLength = 500_000;
+
+    [ObservableProperty]
+    private bool _splitFeatureEnabled;
+
+    [ObservableProperty]
+    private string _splitFeaturePattern = string.Empty;
+
+    /// <summary>查找替换是否区分大小写。供编辑 Tab 的 CaseSensitive Toggle 双向绑定。</summary>
+    [ObservableProperty]
+    private bool _caseSensitive;
 
     [ObservableProperty]
     private string _bookTitle = "未命名书籍";
@@ -429,8 +454,52 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        // 记录原章节在树中的位置
-        var oldNode = SelectedChapter;
+        ApplySplitResult(segments, "已自动切分为");
+    }
+
+    private bool CanAutoSplitChapter() => SelectedChapter is not null;
+
+    /// <summary>
+    /// 按编辑 Tab 配置的拆分规则切分当前章节（智能/等长/特征组合）。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanStartSplit))]
+    public void StartSplit()
+    {
+        if (SelectedChapter is null) return;
+
+        SaveEditorContent?.Invoke(SelectedChapter);
+
+        var splitter = new ChapterSplitter();
+        var plainText = ChapterSplitter.ExtractPlainText(SelectedChapter.Chapter.XhtmlContent);
+        var options = BuildSplitOptions();
+        var segments = splitter.Split(plainText, options);
+
+        if (segments.Count <= 1)
+        {
+            StatusMessage = "未识别到切分点，无需切分";
+            return;
+        }
+
+        ApplySplitResult(segments, "已按规则切分为");
+    }
+
+    private bool CanStartSplit() => SelectedChapter is not null;
+
+    private ChapterSplitter.SplitOptions BuildSplitOptions() => new(
+        SmartEnabled: SplitSmartEnabled,
+        MaxTitleLength: SplitMaxTitleLength,
+        EqualLengthEnabled: SplitEqualLengthEnabled,
+        EqualByteLength: SplitByteLength,
+        FeatureEnabled: SplitFeatureEnabled,
+        FeaturePattern: string.IsNullOrWhiteSpace(SplitFeaturePattern) ? null : SplitFeaturePattern);
+
+    /// <summary>
+    /// 把切分结果应用到章节树：移除原章节，按 segments 创建新同级章节。
+    /// 通用核心，供 AutoSplitChapter（无规则）和 StartSplit（按配置规则）共用。
+    /// </summary>
+    private void ApplySplitResult(IList<ChapterSegment> segments, string statusPrefix)
+    {
+        var oldNode = SelectedChapter!;
         var siblings = oldNode.Parent?.Children ?? Chapters;
         var idx = siblings.IndexOf(oldNode);
         var parentId = oldNode.Parent?.Chapter.Id;
@@ -468,10 +537,8 @@ public partial class MainViewModel : ObservableObject
             SelectedChapter = firstNode;
         }
 
-        StatusMessage = $"已自动切分为 {segments.Count} 个章节";
+        StatusMessage = $"{statusPrefix} {segments.Count} 个章节";
     }
-
-    private bool CanAutoSplitChapter() => SelectedChapter is not null;
 
     /// <summary>
     /// 一键排版：对当前章节内容进行自动化清洗和格式化。

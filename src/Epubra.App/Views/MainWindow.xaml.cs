@@ -560,16 +560,6 @@ public partial class MainWindow : Window
 
     // ===== 格式化按钮 =====
 
-    private void Bold_Click(object sender, RoutedEventArgs e)
-    {
-        var sel = Editor.Selection;
-        if (sel.IsEmpty) return;
-        var td = sel.GetPropertyValue(Inline.FontWeightProperty);
-        var current = td is FontWeight fw ? fw : FontWeights.Normal;
-        sel.ApplyPropertyValue(Inline.FontWeightProperty,
-            current == FontWeights.Bold ? FontWeights.Normal : FontWeights.Bold);
-    }
-
     private void Italic_Click(object sender, RoutedEventArgs e)
     {
         var sel = Editor.Selection;
@@ -609,61 +599,28 @@ public partial class MainWindow : Window
         }
     }
 
-    private void FontFamily_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        if (Editor is null || !Editor.IsEnabled) return;
-        if (FontFamilyCombo.SelectedItem is not ComboBoxItem item) return;
-        Editor.Selection.ApplyPropertyValue(Inline.FontFamilyProperty, new FontFamily(item.Content.ToString()!));
-    }
-
-    private void FontSize_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        if (Editor is null || !Editor.IsEnabled) return;
-        if (FontSizeCombo.SelectedItem is not ComboBoxItem item) return;
-        if (double.TryParse(item.Content?.ToString(), out var size))
-        {
-            Editor.Selection.ApplyPropertyValue(Inline.FontSizeProperty, size);
-        }
-    }
-
     private void AlignLeft_Click(object sender, RoutedEventArgs e)
     {
         var para = GetCurrentParagraph();
         if (para is not null) para.TextAlignment = TextAlignment.Left;
-        AlignLeftToggle.IsChecked = true;
-        AlignCenterToggle.IsChecked = false;
-        AlignRightToggle.IsChecked = false;
-        AlignJustifyToggle.IsChecked = false;
     }
 
     private void AlignCenter_Click(object sender, RoutedEventArgs e)
     {
         var para = GetCurrentParagraph();
         if (para is not null) para.TextAlignment = TextAlignment.Center;
-        AlignLeftToggle.IsChecked = false;
-        AlignCenterToggle.IsChecked = true;
-        AlignRightToggle.IsChecked = false;
-        AlignJustifyToggle.IsChecked = false;
     }
 
     private void AlignRight_Click(object sender, RoutedEventArgs e)
     {
         var para = GetCurrentParagraph();
         if (para is not null) para.TextAlignment = TextAlignment.Right;
-        AlignLeftToggle.IsChecked = false;
-        AlignCenterToggle.IsChecked = false;
-        AlignRightToggle.IsChecked = true;
-        AlignJustifyToggle.IsChecked = false;
     }
 
     private void AlignJustify_Click(object sender, RoutedEventArgs e)
     {
         var para = GetCurrentParagraph();
         if (para is not null) para.TextAlignment = TextAlignment.Justify;
-        AlignLeftToggle.IsChecked = false;
-        AlignCenterToggle.IsChecked = false;
-        AlignRightToggle.IsChecked = false;
-        AlignJustifyToggle.IsChecked = true;
     }
 
     // ===== 剪贴板 =====
@@ -1048,10 +1005,6 @@ public partial class MainWindow : Window
         };
         ViewModel.Book.Resources.Add(resource);
 
-        // 添加到字体下拉框
-        var fontName = Path.GetFileNameWithoutExtension(fileName);
-        FontFamilyCombo.Items.Add(new ComboBoxItem { Content = fontName });
-
         ViewModel.StatusMessage = $"已嵌入字体：{fileName} ({data.Length / 1024.0:F1} KB)";
     }
 
@@ -1299,7 +1252,11 @@ public partial class MainWindow : Window
         if (string.IsNullOrEmpty(searchText)) return;
 
         var sel = Editor.Selection;
-        if (!sel.IsEmpty && sel.Text == searchText)
+        var equals = ViewModel.CaseSensitive
+            ? sel.Text == searchText
+            : string.Equals(sel.Text, searchText, StringComparison.OrdinalIgnoreCase);
+
+        if (!sel.IsEmpty && equals)
         {
             sel.Text = replaceText;
             ViewModel.StatusMessage = "已替换";
@@ -1364,13 +1321,17 @@ public partial class MainWindow : Window
     private TextRange? FindTextRange(TextPointer start, TextPointer end, string searchText)
     {
         var current = start;
+        var comparer = ViewModel.CaseSensitive
+            ? StringComparison.Ordinal
+            : StringComparison.OrdinalIgnoreCase;
+
         while (current is not null)
         {
             var next = current.GetPositionAtOffset(searchText.Length);
             if (next is null || next.CompareTo(end) > 0) break;
 
             var range = new TextRange(current, next);
-            if (range.Text == searchText)
+            if (string.Equals(range.Text, searchText, comparer))
             {
                 return range;
             }
@@ -1392,7 +1353,6 @@ public partial class MainWindow : Window
     private void Editor_SelectionChanged(object sender, RoutedEventArgs e)
     {
         UpdateWordCount();
-        UpdateToggleStates();
     }
 
     /// <summary>编辑器内容变化（输入/粘贴/撤销等）→ 标记为已修改。</summary>
@@ -1402,44 +1362,7 @@ public partial class MainWindow : Window
         ViewModel.NotifyChapterContentChanged();
     }
 
-    /// <summary>根据当前选区更新工具栏 Toggle 按钮状态。</summary>
-    private void UpdateToggleStates()
-    {
-        if (Editor is null || !Editor.IsEnabled) return;
-
-        var sel = Editor.Selection;
-
-        // 加粗
-        var fw = sel.GetPropertyValue(Inline.FontWeightProperty);
-        BoldToggle.IsChecked = fw is FontWeight weight && weight == FontWeights.Bold;
-
-        // 斜体
-        var fs = sel.GetPropertyValue(Inline.FontStyleProperty);
-        ItalicToggle.IsChecked = fs is FontStyle style && style == FontStyles.Italic;
-
-        // 下划线 / 删除线
-        var td = sel.GetPropertyValue(Inline.TextDecorationsProperty);
-        if (td is TextDecorationCollection tdc)
-        {
-            UnderlineToggle.IsChecked = tdc.Contains(TextDecorations.Underline[0]);
-            StrikeToggle.IsChecked = tdc.Contains(TextDecorations.Strikethrough[0]);
-        }
-        else
-        {
-            UnderlineToggle.IsChecked = false;
-            StrikeToggle.IsChecked = false;
-        }
-
-        // 对齐
-        var para = GetCurrentParagraph();
-        if (para is not null)
-        {
-            AlignLeftToggle.IsChecked = para.TextAlignment == TextAlignment.Left;
-            AlignCenterToggle.IsChecked = para.TextAlignment == TextAlignment.Center;
-            AlignRightToggle.IsChecked = para.TextAlignment == TextAlignment.Right;
-            AlignJustifyToggle.IsChecked = para.TextAlignment == TextAlignment.Justify;
-        }
-    }
+    // 工具栏格式 Toggle 已随「开始」Tab 精简移除，选区变化时不再需要同步其状态。
 
     /// <summary>更新当前章节字数统计。</summary>
     private void UpdateWordCount()
