@@ -389,46 +389,6 @@
                 </StackPanel>
             </TabItem>
 
-            <!-- ====== Tab: 章节 ====== -->
-            <TabItem Style="{StaticResource RibbonTab}" Header="章节">
-                <StackPanel Orientation="Horizontal" Background="Transparent" Height="76">
-                    <Border Style="{StaticResource RibbonGroup}">
-                        <StackPanel VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal" Margin="0,1">
-                                <Button Style="{StaticResource RBtnM}" Content="添加章节" Command="{Binding AddChapterCommand}" ToolTip="添加章节" />
-                                <Button Style="{StaticResource RBtnM}" Content="添加子章节" Command="{Binding AddSubChapterCommand}" ToolTip="添加子章节" />
-                                <Button Style="{StaticResource RBtnM}" Content="重命名" Command="{Binding RenameChapterCommand}" ToolTip="重命名" />
-                                <Button Style="{StaticResource RBtnM}" Content="删除" Command="{Binding DeleteChapterCommand}" ToolTip="删除章节" />
-                            </StackPanel>
-                            <TextBlock Style="{StaticResource GroupLabel}" Text="管理" />
-                        </StackPanel>
-                    </Border>
-                    <Border Style="{StaticResource RibbonGroup}">
-                        <StackPanel VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal" Margin="0,1">
-                                <Button Style="{StaticResource RBtnM}" Content="上移" Command="{Binding MoveUpCommand}" ToolTip="上移" />
-                                <Button Style="{StaticResource RBtnM}" Content="下移" Command="{Binding MoveDownCommand}" ToolTip="下移" />
-                                <Button Style="{StaticResource RBtnM}" Content="缩进" Command="{Binding IndentCommand}" ToolTip="缩进" />
-                                <Button Style="{StaticResource RBtnM}" Content="取消缩进" Command="{Binding OutdentCommand}" ToolTip="取消缩进" />
-                            </StackPanel>
-                            <TextBlock Style="{StaticResource GroupLabel}" Text="排序" />
-                        </StackPanel>
-                    </Border>
-                    <Border Style="{StaticResource RibbonGroup}">
-                        <StackPanel VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal" Margin="0,1">
-                                <Button Style="{StaticResource RBtnAccent}" Command="{Binding AutoSplitChapterCommand}" ToolTip="自动识别章节标记并切分当前章节">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconSplit}" />
-                                        <TextBlock Text="自动切分" Margin="6,0,0,0" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                            </StackPanel>
-                            <TextBlock Style="{StaticResource GroupLabel}" Text="智能" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </TabItem>
 
             <!-- ====== Tab: 发布 ====== -->
             <TabItem Style="{StaticResource RibbonTab}" Header="发布">
@@ -650,10 +610,15 @@
                                 <MenuItem Header="上移" Command="{Binding MoveUpCommand}" />
                                 <MenuItem Header="下移" Command="{Binding MoveDownCommand}" />
                                 <Separator />
-                                <MenuItem Header="缩进" Command="{Binding IndentCommand}" />
-                                <MenuItem Header="取消缩进" Command="{Binding OutdentCommand}" />
+                                <MenuItem Header="升级" Command="{Binding PromoteChapterCommand}" />
+                                <MenuItem Header="降级" Command="{Binding DemoteChapterCommand}" />
                                 <Separator />
+                                <MenuItem Header="合并到下一章" Command="{Binding MergeChaptersCommand}" />
+                                <MenuItem Header="手动拆分…" Command="{Binding ManualSplitChapterCommand}" />
                                 <MenuItem Header="自动切分章节" Command="{Binding AutoSplitChapterCommand}" />
+                                <Separator />
+                                <MenuItem Header="首行作目录名" Command="{Binding ExtractTocCommand}" />
+                                <MenuItem Header="批量重命名…" Command="{Binding BatchRenameChaptersCommand}" />
                                 <Separator />
                                 <MenuItem Header="一键排版" Command="{Binding AutoFormatChapterCommand}" />
                                 <Separator />

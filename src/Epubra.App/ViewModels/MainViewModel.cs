@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -33,6 +35,10 @@ public partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(RenameChapterCommand))]
     [NotifyCanExecuteChangedFor(nameof(AutoSplitChapterCommand))]
     [NotifyCanExecuteChangedFor(nameof(AutoFormatChapterCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PromoteChapterCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DemoteChapterCommand))]
+    [NotifyCanExecuteChangedFor(nameof(MergeChaptersCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ManualSplitChapterCommand))]
     private ChapterNode? _selectedChapter;
 
     [ObservableProperty]
@@ -67,6 +73,22 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private int _charCount;
+
+    /// <summary>保存状态文字（"未保存"/"已修改"/"已保存"）。</summary>
+    [ObservableProperty]
+    private string _saveStatus = "未保存";
+
+    /// <summary>当前选中章节名（用于状态栏显示）。</summary>
+    [ObservableProperty]
+    private string _currentChapterName = "（未选择章节）";
+
+    /// <summary>当前章节 XHTML 字节数（用于状态栏显示）。</summary>
+    [ObservableProperty]
+    private int _chapterSize;
+
+    /// <summary>是否有未保存的修改。</summary>
+    [ObservableProperty]
+    private bool _hasUnsavedChanges;
 
     /// <summary>是否处于预览模式（true=WebView2 预览，false=RichTextBox 编辑）。</summary>
     [ObservableProperty]
@@ -123,6 +145,16 @@ public partial class MainViewModel : ObservableObject
     /// 一键排版回调（由 View 绑定到 FlowDocument 格式化逻辑）。
     /// </summary>
     public Action? ApplyFormatAction { get; set; }
+
+    /// <summary>
+    /// 显示输入对话框的回调（prompt, defaultValue → user input or null if cancelled）。
+    /// </summary>
+    public Func<string, string, string?>? ShowInputDialog { get; set; }
+
+    /// <summary>
+    /// 重新加载编辑器内容的回调（由 View 在章节内容被 ViewModel 直接修改后调用）。
+    /// </summary>
+    public Action? ReloadEditorAction { get; set; }
 
     public MainViewModel()
     {
@@ -461,6 +493,349 @@ public partial class MainViewModel : ObservableObject
 
     private bool CanAutoFormatChapter() => SelectedChapter is not null;
 
+    // ===== P11.1 章节树增强命令 =====
+
+    /// <summary>升级（变为父章节的同级上一个）—— 同取消缩进。</summary>
+    [RelayCommand(CanExecute = nameof(CanOutdent))]
+    public void PromoteChapter() => Outdent();
+
+    /// <summary>降级（变为上一个同级章节的子章节）—— 同缩进。</summary>
+    [RelayCommand(CanExecute = nameof(CanIndent))]
+    public void DemoteChapter() => Indent();
+
+    /// <summary>
+    /// 合并：将选中章节与下一个同级章节合并为一个章节。
+    /// 下一章节的正文内容追加到当前章节末尾。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanMergeChapters))]
+    public void MergeChapters()
+    {
+        if (SelectedChapter is null) return;
+
+        var siblings = SelectedChapter.Parent?.Children ?? Chapters;
+        var idx = siblings.IndexOf(SelectedChapter);
+        if (idx < 0 || idx >= siblings.Count - 1)
+        {
+            StatusMessage = "没有下一个同级章节可合并";
+            return;
+        }
+
+        var nextNode = siblings[idx + 1];
+
+        // 先保存编辑器内容
+        SaveEditorContent?.Invoke(SelectedChapter);
+
+        // 合并 XHTML：将下一章节的 body 内容追加到当前章节
+        var merged = MergeXhtml(SelectedChapter.Chapter.XhtmlContent, nextNode.Chapter.XhtmlContent);
+        SelectedChapter.Chapter.XhtmlContent = merged;
+
+        // 从树和 Book 中移除下一章节
+        siblings.Remove(nextNode);
+        Book.Chapters.Remove(nextNode.Chapter);
+
+        // 重新加载编辑器显示合并后的内容
+        LoadEditorContent?.Invoke(SelectedChapter);
+        UpdateSelectedChapterInfo();
+
+        RenumberChapters();
+        UpdateChapterCount();
+        HasUnsavedChanges = true;
+        SaveStatus = "已修改";
+        StatusMessage = $"已合并章节：{nextNode.Title}";
+    }
+
+    private bool CanMergeChapters()
+    {
+        if (SelectedChapter is null) return false;
+        var siblings = SelectedChapter.Parent?.Children ?? Chapters;
+        var idx = siblings.IndexOf(SelectedChapter);
+        return idx >= 0 && idx < siblings.Count - 1;
+    }
+
+    /// <summary>
+    /// 手动拆分：在指定段落后将当前章节拆分为两个同级章节。
+    /// 通过 ShowInputDialog 回调询问用户拆分位置。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanManualSplitChapter))]
+    public void ManualSplitChapter()
+    {
+        if (SelectedChapter is null) return;
+
+        // 先保存编辑器内容
+        SaveEditorContent?.Invoke(SelectedChapter);
+
+        var xhtml = SelectedChapter.Chapter.XhtmlContent;
+        var plainText = ChapterSplitter.ExtractPlainText(xhtml);
+
+        // 按双换行分段
+        var paragraphs = plainText.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
+
+        if (paragraphs.Length < 2)
+        {
+            StatusMessage = "章节内容不足，无法拆分（至少需要两段）";
+            return;
+        }
+
+        // 询问用户在第几段后拆分
+        var input = ShowInputDialog?.Invoke(
+            $"章节共 {paragraphs.Length} 段，在第几段后拆分？",
+            Math.Max(1, paragraphs.Length / 2).ToString()) ?? Math.Max(1, paragraphs.Length / 2).ToString();
+
+        if (!int.TryParse(input, out var splitAfter) || splitAfter < 1)
+        {
+            StatusMessage = "已取消手动拆分";
+            return;
+        }
+
+        splitAfter = Math.Clamp(splitAfter, 1, paragraphs.Length - 1);
+
+        // 分割内容
+        var firstContent = string.Join("\n\n", paragraphs.Take(splitAfter));
+        var secondContent = string.Join("\n\n", paragraphs.Skip(splitAfter));
+
+        // 重建 XHTML
+        var currentTitle = SelectedChapter.Title;
+        var newTitle = $"{currentTitle}（续）";
+
+        SelectedChapter.Chapter.XhtmlContent = ChapterSplitter.WrapAsXhtml(currentTitle, firstContent);
+
+        // 创建新章节并插入到当前章节之后
+        var siblings = SelectedChapter.Parent?.Children ?? Chapters;
+        var idx = siblings.IndexOf(SelectedChapter);
+        var parentId = SelectedChapter.Parent?.Chapter.Id;
+
+        var newChapter = new Chapter
+        {
+            Title = newTitle,
+            FileName = $"chapter_{Book.Chapters.Count + 1:D3}",
+            Order = idx + 1,
+            ParentId = parentId,
+            XhtmlContent = ChapterSplitter.WrapAsXhtml(newTitle, secondContent)
+        };
+        Book.Chapters.Add(newChapter);
+        var newNode = new ChapterNode(newChapter, SelectedChapter.Parent);
+        siblings.Insert(idx + 1, newNode);
+
+        // 重新加载编辑器
+        LoadEditorContent?.Invoke(SelectedChapter);
+
+        RenumberChapters();
+        UpdateChapterCount();
+        HasUnsavedChanges = true;
+        SaveStatus = "已修改";
+        SelectedChapter = newNode;
+        StatusMessage = $"已在第 {splitAfter} 段后拆分为两个章节";
+    }
+
+    private bool CanManualSplitChapter() => SelectedChapter is not null;
+
+    /// <summary>
+    /// 提取目录：遍历所有章节，将每章的第一个标题（h1-h3）或第一个非空段落
+    /// 提取为章节名，实现"首行作目录名"。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanExtractToc))]
+    public void ExtractToc()
+    {
+        var allNodes = Chapters.SelectMany(n => n.DescendAndSelf()).ToList();
+        var renamed = 0;
+
+        foreach (var node in allNodes)
+        {
+            var title = ExtractFirstHeading(node.Chapter.XhtmlContent);
+            if (!string.IsNullOrWhiteSpace(title))
+            {
+                node.Title = title.Trim();
+                renamed++;
+            }
+        }
+
+        HasUnsavedChanges = true;
+        SaveStatus = "已修改";
+        StatusMessage = renamed > 0
+            ? $"已从内容提取 {renamed} 个章节标题"
+            : "未提取到可用标题";
+    }
+
+    private bool CanExtractToc() => Chapters.Count > 0;
+
+    /// <summary>
+    /// 批量重命名：按文档顺序给所有章节重新编号命名。
+    /// 通过 ShowInputDialog 回调让用户输入命名模板（{n} 为序号）。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanBatchRenameChapters))]
+    public void BatchRenameChapters()
+    {
+        var pattern = ShowInputDialog?.Invoke(
+            "输入命名模板（{n} = 序号，{n:02} = 两位数）",
+            "第{n}章") ?? "第{n}章";
+
+        if (string.IsNullOrWhiteSpace(pattern))
+        {
+            StatusMessage = "已取消批量重命名";
+            return;
+        }
+
+        var allNodes = Chapters.SelectMany(n => n.DescendAndSelf()).ToList();
+        var renamed = 0;
+
+        for (var i = 0; i < allNodes.Count; i++)
+        {
+            var name = pattern
+                .Replace("{n:02}", (i + 1).ToString("D2"))
+                .Replace("{n:03}", (i + 1).ToString("D3"))
+                .Replace("{n}", (i + 1).ToString());
+            allNodes[i].Title = name;
+            renamed++;
+        }
+
+        HasUnsavedChanges = true;
+        SaveStatus = "已修改";
+        StatusMessage = $"已批量重命名 {renamed} 个章节";
+    }
+
+    private bool CanBatchRenameChapters() => Chapters.Count > 0;
+
+    // ===== P11.1 XHTML 辅助方法 =====
+
+    /// <summary>合并两个 XHTML：将第二段的 body 内容追加到第一段。</summary>
+    private static string MergeXhtml(string first, string second)
+    {
+        if (string.IsNullOrWhiteSpace(first)) return second;
+        if (string.IsNullOrWhiteSpace(second)) return first;
+
+        var firstBody = ExtractBodyInner(first);
+        var secondBody = ExtractBodyInner(second);
+
+        // 提取第一个文档的 title
+        var title = ExtractTitle(first) ?? "合并章节";
+
+        var sb = new StringBuilder();
+        sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+        sb.AppendLine("<!DOCTYPE html>");
+        sb.AppendLine("<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"zh-CN\">");
+        sb.AppendLine("<head>");
+        sb.Append("<title>").Append(System.Net.WebUtility.HtmlEncode(title)).AppendLine("</title>");
+        sb.AppendLine("</head>");
+        sb.AppendLine("<body>");
+        sb.Append(firstBody);
+        sb.AppendLine();
+        sb.Append(secondBody);
+        sb.AppendLine();
+        sb.AppendLine("</body>");
+        sb.AppendLine("</html>");
+        return sb.ToString();
+    }
+
+    /// <summary>提取 XHTML 中 &lt;body&gt; 标签内的内容。</summary>
+    private static string ExtractBodyInner(string xhtml)
+    {
+        if (string.IsNullOrWhiteSpace(xhtml)) return string.Empty;
+
+        var startIdx = xhtml.IndexOf("<body>", StringComparison.OrdinalIgnoreCase);
+        var endIdx = xhtml.LastIndexOf("</body>", StringComparison.OrdinalIgnoreCase);
+
+        if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx)
+            return xhtml;
+
+        return xhtml.Substring(startIdx + 6, endIdx - startIdx - 6).Trim();
+    }
+
+    /// <summary>从 XHTML 中提取 &lt;title&gt; 标签的文本。</summary>
+    private static string? ExtractTitle(string xhtml)
+    {
+        if (string.IsNullOrWhiteSpace(xhtml)) return null;
+
+        var startIdx = xhtml.IndexOf("<title>", StringComparison.OrdinalIgnoreCase);
+        var endIdx = xhtml.IndexOf("</title>", StringComparison.OrdinalIgnoreCase);
+
+        if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx)
+            return null;
+
+        return System.Net.WebUtility.HtmlDecode(
+            xhtml.Substring(startIdx + 7, endIdx - startIdx - 7).Trim());
+    }
+
+    /// <summary>
+    /// 从 XHTML 中提取第一个标题（h1-h3）文本；若无标题则取第一个非空段落文本。
+    /// </summary>
+    private static string? ExtractFirstHeading(string? xhtml)
+    {
+        if (string.IsNullOrWhiteSpace(xhtml)) return null;
+
+        // 尝试 h1-h3
+        for (var level = 1; level <= 3; level++)
+        {
+            var tag = $"h{level}";
+            var startTag = $"<{tag}";
+            var endTag = $"</{tag}>";
+
+            var startIdx = xhtml.IndexOf(startTag, StringComparison.OrdinalIgnoreCase);
+            if (startIdx < 0) continue;
+
+            // 跳过开始标签（含属性）
+            var tagEnd = xhtml.IndexOf('>', startIdx);
+            if (tagEnd < 0) continue;
+
+            var contentStart = tagEnd + 1;
+            var endIdx = xhtml.IndexOf(endTag, contentStart, StringComparison.OrdinalIgnoreCase);
+            if (endIdx < 0) continue;
+
+            var text = xhtml[contentStart..endIdx];
+            text = Regex.Replace(text, "<[^>]+>", ""); // 去掉内嵌标签
+            text = System.Net.WebUtility.HtmlDecode(text).Trim();
+            if (!string.IsNullOrEmpty(text)) return text;
+        }
+
+        // 无标题 → 取第一个 <p> 的文本
+        var pStart = xhtml.IndexOf("<p", StringComparison.OrdinalIgnoreCase);
+        if (pStart >= 0)
+        {
+            var pTagEnd = xhtml.IndexOf('>', pStart);
+            if (pTagEnd >= 0)
+            {
+                var pContentStart = pTagEnd + 1;
+                var pEnd = xhtml.IndexOf("</p>", pContentStart, StringComparison.OrdinalIgnoreCase);
+                if (pEnd >= 0)
+                {
+                    var text = xhtml[pContentStart..pEnd];
+                    text = Regex.Replace(text, "<[^>]+>", "");
+                    text = System.Net.WebUtility.HtmlDecode(text).Trim();
+                    if (!string.IsNullOrEmpty(text)) return text;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // ===== 选中章节变更 → 刷新状态栏显示 =====
+
+    partial void OnSelectedChapterChanged(ChapterNode? value)
+    {
+        UpdateSelectedChapterInfo();
+    }
+
+    private void UpdateSelectedChapterInfo()
+    {
+        if (SelectedChapter is null)
+        {
+            CurrentChapterName = "（未选择章节）";
+            ChapterSize = 0;
+            return;
+        }
+        CurrentChapterName = SelectedChapter.Title;
+        ChapterSize = SelectedChapter.Chapter.XhtmlContent?.Length ?? 0;
+    }
+
+    /// <summary>外部调用：通知章节内容已修改（更新状态栏的章节大小/字数/保存状态）。</summary>
+    public void NotifyChapterContentChanged()
+    {
+        UpdateSelectedChapterInfo();
+        UpdateWordCount(CharCount, WordCount);
+        HasUnsavedChanges = true;
+        SaveStatus = "已修改";
+    }
+
     // ===== 编辑/预览切换 =====
 
     partial void OnIsPreviewModeChanged(bool value)
@@ -667,6 +1042,8 @@ public partial class MainViewModel : ObservableObject
 
             await _projectService.SaveAsync(Book, filePath);
             ProjectFilePath = filePath;
+            HasUnsavedChanges = false;
+            SaveStatus = "已保存";
             StatusMessage = $"已保存：{Path.GetFileName(filePath)}";
         }
         catch (Exception ex)
@@ -745,6 +1122,9 @@ public partial class MainViewModel : ObservableObject
         SelectedChapter = null;
         UpdateChapterCount();
         UpdateWordCount(0, 0);
+        HasUnsavedChanges = false;
+        SaveStatus = filePath is not null ? "已保存" : "未保存";
+        UpdateSelectedChapterInfo();
     }
 
     // ===== 新建项目 =====
@@ -926,6 +1306,9 @@ public partial class MainViewModel : ObservableObject
         SelectedChapter = null;
         UpdateChapterCount();
         UpdateWordCount(0, 0);
+        HasUnsavedChanges = false;
+        SaveStatus = "未保存";
+        UpdateSelectedChapterInfo();
         StatusMessage = "已新建项目";
     }
 

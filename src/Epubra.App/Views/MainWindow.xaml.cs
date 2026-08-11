@@ -38,6 +38,12 @@ public partial class MainWindow : Window
         vm.RedoAction = () => Editor.Redo();
         vm.ToggleFindReplaceAction = ToggleFindReplace;
         vm.ApplyFormatAction = ApplyAutoFormat;
+        vm.ShowInputDialog = ShowInputDialogImpl;
+        vm.ReloadEditorAction = () =>
+        {
+            if (ViewModel.SelectedChapter is not null)
+                LoadChapterContent(ViewModel.SelectedChapter);
+        };
 
         // WebView2 初始化（异步，不阻塞窗口打开）
         _ = InitializeWebViewAsync();
@@ -1392,7 +1398,7 @@ public partial class MainWindow : Window
     /// <summary>编辑器内容变化（输入/粘贴/撤销等）→ 标记为已修改。</summary>
     private void Editor_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
-        if (!Editor.IsEnabled) return;
+        if (_isLoadingContent || !Editor.IsEnabled) return;
         ViewModel.NotifyChapterContentChanged();
     }
 
@@ -1722,5 +1728,90 @@ public partial class MainWindow : Window
         public POINT ptMaxPosition;
         public POINT ptMinTrackSize;
         public POINT ptMaxTrackSize;
+    }
+
+    // ===== P11.1 输入对话框 =====
+
+    /// <summary>
+    /// 简单输入对话框：显示 prompt + 文本框 + 确定/取消。
+    /// 返回用户输入的字符串，取消则返回 null。
+    /// </summary>
+    private string? ShowInputDialogImpl(string prompt, string defaultValue)
+    {
+        var window = new Window
+        {
+            Title = "Epubra",
+            Width = 400,
+            Height = 180,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = this,
+            ResizeMode = ResizeMode.NoResize,
+            Background = (System.Windows.Media.Brush)FindResource("SurfaceRaised"),
+            WindowStyle = WindowStyle.SingleBorderWindow
+        };
+
+        var tb = new System.Windows.Controls.TextBox
+        {
+            Text = defaultValue,
+            Margin = new Thickness(16, 16, 16, 8),
+            FontSize = 14,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            CaretIndex = defaultValue.Length
+        };
+
+        var label = new TextBlock
+        {
+            Text = prompt,
+            Margin = new Thickness(16, 12, 16, 0),
+            FontSize = 13,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (System.Windows.Media.Brush)FindResource("TextSecondary")
+        };
+
+        var okBtn = new System.Windows.Controls.Button
+        {
+            Content = "确定",
+            Width = 80,
+            Height = 32,
+            Margin = new Thickness(4),
+            IsDefault = true
+        };
+        var cancelBtn = new System.Windows.Controls.Button
+        {
+            Content = "取消",
+            Width = 80,
+            Height = 32,
+            Margin = new Thickness(4),
+            IsCancel = true
+        };
+
+        var btnPanel = new StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        btnPanel.Children.Add(okBtn);
+        btnPanel.Children.Add(cancelBtn);
+
+        var panel = new StackPanel();
+        panel.Children.Add(label);
+        panel.Children.Add(tb);
+        panel.Children.Add(btnPanel);
+
+        window.Content = panel;
+
+        string? result = null;
+        okBtn.Click += (_, _) =>
+        {
+            result = tb.Text;
+            window.DialogResult = true;
+            window.Close();
+        };
+
+        tb.Focus();
+        tb.SelectAll();
+
+        window.ShowDialog();
+        return result;
     }
 }

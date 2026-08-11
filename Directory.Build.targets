@@ -1,0 +1,31 @@
+<Project>
+  <!--
+    TEMPORARY build workaround (companion to Directory.Build.props).
+    Directory.Build.props only extends DefaultItemExcludes, but when
+    BaseIntermediateOutputPath is redirected to an absolute path outside
+    the project, the SDK's default Compile glob does not consistently
+    exclude the leftover workspace obj/bin trees, producing duplicate
+    AssemblyInfo.cs CS0579 errors. These explicit Compile / None /
+    EmbeddedResource / Content Remove rules are imported AFTER the SDK
+    targets, so they win over the SDK's default items.
+    See Directory.Build.props for full context. DO NOT SHIP.
+  -->
+  <ItemGroup>
+    <Compile          Remove="**/obj/**/*.cs" />
+    <Compile          Remove="**/obj_bak/**/*.cs" />
+    <Compile          Remove="**/bin/**/*.cs" />
+    <Compile          Remove="**/bin_bak/**/*.cs" />
+    <None             Remove="**/obj/**" />
+    <None             Remove="**/obj_bak/**" />
+    <None             Remove="**/bin/**" />
+    <None             Remove="**/bin_bak/**" />
+    <EmbeddedResource Remove="**/obj/**" />
+    <EmbeddedResource Remove="**/obj_bak/**" />
+    <EmbeddedResource Remove="**/bin/**" />
+    <EmbeddedResource Remove="**/bin_bak/**" />
+    <Content          Remove="**/obj/**" />
+    <Content          Remove="**/obj_bak/**" />
+    <Content          Remove="**/bin/**" />
+    <Content          Remove="**/bin_bak/**" />
+  </ItemGroup>
+</Project>

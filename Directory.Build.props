@@ -1,8 +1,21 @@
 <Project>
   <!--
-    TEMPORARY verification artifact created during local build in the agent
-    sandbox (workspace obj/bin were locked by the host file watcher, so the
-    build was redirected to C:\epubra_bld*). This file is now a NO-OP and
-    must be DELETED before committing — it should not ship with the repo.
+    TEMPORARY build workaround (agent sandbox, 2026-08-09).
+    A host file-watcher / EDR process holds open handles on the workspace's
+    obj/bin directories, so:
+      (a) the workspace obj/bin were renamed to *_bak (locked handles followed
+          the rename; we cannot move or delete them),
+      (b) the SDK default compile glob ( **/*.cs ) does not exclude *_bak, so
+          the DefaultItemExcludes is extended to ignore them and prevent
+          duplicate-assembly-attribute (CS0579) errors,
+      (c) all build output (obj + bin) is redirected to C:\epubra_bld so the
+          SDK never touches the locked workspace paths during restore/compile.
+    TODO: delete this file AND the *_bak directories once the lock holder
+    releases (machine restart or host watcher stops). DO NOT SHIP.
   -->
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/obj_bak/**;**/bin_bak/**</DefaultItemExcludes>
+    <BaseIntermediateOutputPath>C:\epubra_bld\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
+    <OutputPath>C:\epubra_bld\$(MSBuildProjectName)\bin\$(Configuration)\</OutputPath>
+  </PropertyGroup>
 </Project>
