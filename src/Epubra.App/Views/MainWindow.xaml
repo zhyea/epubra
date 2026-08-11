@@ -139,8 +139,9 @@
             </Grid>
         </Border>
 
-        <!-- ====== Ribbon 工具栏 ====== -->
-        <TabControl x:Name="RibbonTabs" DockPanel.Dock="Top"
+        <!-- ====== Ribbon 工具栏（含右侧折叠按钮） ====== -->
+        <Grid DockPanel.Dock="Top">
+        <TabControl x:Name="RibbonTabs"
                     BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderSubtle}"
                     Background="{DynamicResource SurfaceBase}" Padding="0"
                     MouseDoubleClick="RibbonTabs_MouseDoubleClick"
@@ -429,6 +430,17 @@
             </TabItem>
 
         </TabControl>
+
+        <!-- 右侧工具栏折叠按钮：点击切换折叠/展开（与 Ctrl+F1、双击标签、应用菜单同效） -->
+        <Button x:Name="RibbonCollapseBtn" Style="{StaticResource RibbonCollapseButton}"
+                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,6,0"
+                ToolTip="折叠/展开工具栏 (Ctrl+F1)"
+                Click="ToggleRibbon_Click">
+            <Path x:Name="RibbonCollapseIcon" Style="{StaticResource IconPath}"
+                  Data="M3,7 L9,2 L15,7" />
+        </Button>
+
+        </Grid>
 
         <!-- ====== 状态栏（带图标分区） ====== -->
         <StatusBar DockPanel.Dock="Bottom" Background="{DynamicResource SurfaceSunken}"

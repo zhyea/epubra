@@ -154,6 +154,12 @@ public partial class MainWindow : Window
     {
         var showExpanded = !_isRibbonCollapsed || _isRibbonTempExpanded;
         RibbonTabs.Height = showExpanded ? double.NaN : CollapsedRibbonHeight;
+        if (RibbonCollapseIcon != null)
+        {
+            // 展开时显示向上箭头（点击折叠）；折叠时显示向下箭头（点击展开）
+            RibbonCollapseIcon.Data = System.Windows.Media.Geometry.Parse(
+                _isRibbonCollapsed ? "M3,3 L9,8 L15,3" : "M3,7 L9,2 L15,7");
+        }
     }
 
     /// <summary>按钮/菜单点击切换。</summary>
