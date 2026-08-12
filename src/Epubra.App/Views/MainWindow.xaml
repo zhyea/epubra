@@ -293,6 +293,134 @@
             <TabItem Style="{StaticResource RibbonTab}" Header="编辑">
                 <StackPanel Orientation="Horizontal" Background="Transparent" Height="98">
 
+                    <!-- Group: 剪贴板 -->
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Margin="0,1">
+                                <Button Style="{StaticResource RBtnIconText}" Click="Copy_Click" ToolTip="复制 (Ctrl+C)">
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconCopy}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="复制" Margin="0,2,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource RBtnIconText}" Click="Paste_Click" ToolTip="粘贴 (Ctrl+V)">
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconPaste}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="粘贴" Margin="0,2,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource RBtnIconText}" Click="Cut_Click" ToolTip="剪切 (Ctrl+X)">
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconCut}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="剪切" Margin="0,2,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="剪贴板" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Group: 插入 -->
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <Grid Margin="0,1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <!-- Row 1: 图片 / 目录 / 视频 -->
+                                <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource RBtnIconText}" Click="InsertImage_Click" ToolTip="插入图片">
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconImage}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="图片" Margin="0,2,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource RBtnIconText}" Click="InsertToc_Click" ToolTip="插入目录占位符">
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconBulletList}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="目录" Margin="0,2,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource RBtnIconText}" Click="InsertVideo_Click" ToolTip="插入视频文件到当前章节">
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconImage}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="视频" Margin="0,2,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <!-- Row 2: 横线 / 音频 / 书签 -->
+                                <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource RBtnIconText}" Click="HorizontalLine_Click" ToolTip="插入水平分隔线">
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconHorizontalRule}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="横线" Margin="0,2,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource RBtnIconText}" Click="InsertAudio_Click" ToolTip="插入音频文件到当前章节">
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconAudio}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="音频" Margin="0,2,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource RBtnIconText}" Click="InsertBookmark_Click" ToolTip="在光标处插入书签">
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Style="{StaticResource IconPath}" Data="{StaticResource IconLink}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="书签" Margin="0,2,0,0" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="插入" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Group: 编辑（字体/对齐） -->
+                    <Border Style="{StaticResource RibbonGroup}">
+                        <StackPanel VerticalAlignment="Center">
+                            <Grid Margin="0,1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <!-- Row 1: B / I / U / A(颜色) -->
+                                <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource RBtnS}" Click="Bold_Click" ToolTip="加粗 (Ctrl+B)"
+                                        FontWeight="Bold" Content="B" />
+                                <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource RBtnS}" Click="Italic_Click" ToolTip="斜体 (Ctrl+I)"
+                                        FontStyle="Italic" Content="I" />
+                                <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource RBtnS}" Click="Underline_Click" ToolTip="下划线 (Ctrl+U)"
+                                        Content="U" />
+                                <Button Grid.Row="0" Grid.Column="3" Style="{StaticResource RBtnS}" Click="FontColor_Click" ToolTip="字体颜色">
+                                    <Grid>
+                                        <TextBlock Text="A" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,4" />
+                                        <Rectangle Height="3" Width="14" Fill="Red" VerticalAlignment="Bottom" HorizontalAlignment="Center" />
+                                    </Grid>
+                                </Button>
+                                <!-- Row 2: 四对齐 -->
+                                <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource RBtnS}" Click="AlignLeft_Click" ToolTip="左对齐">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconAlignLeft}" />
+                                </Button>
+                                <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource RBtnS}" Click="AlignCenter_Click" ToolTip="居中">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconAlignCenter}" />
+                                </Button>
+                                <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource RBtnS}" Click="AlignRight_Click" ToolTip="右对齐">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconAlignRight}" />
+                                </Button>
+                                <Button Grid.Row="1" Grid.Column="3" Style="{StaticResource RBtnS}" Click="AlignJustify_Click" ToolTip="两端对齐">
+                                    <Path Style="{StaticResource IconPath}" Data="{StaticResource IconAlignJustify}" />
+                                </Button>
+                            </Grid>
+                            <TextBlock Style="{StaticResource GroupLabel}" Text="编辑" />
+                        </StackPanel>
+                    </Border>
+
                     <!-- Group: 查找替换 -->
                     <Border Style="{StaticResource RibbonGroup}">
                         <StackPanel VerticalAlignment="Center">

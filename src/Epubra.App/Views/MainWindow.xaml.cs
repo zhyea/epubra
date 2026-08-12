@@ -566,6 +566,16 @@ public partial class MainWindow : Window
 
     // ===== 格式化按钮 =====
 
+    private void Bold_Click(object sender, RoutedEventArgs e)
+    {
+        var sel = Editor.Selection;
+        if (sel.IsEmpty) return;
+        var td = sel.GetPropertyValue(Inline.FontWeightProperty);
+        var current = td is FontWeight fw ? fw : FontWeights.Normal;
+        sel.ApplyPropertyValue(Inline.FontWeightProperty,
+            current == FontWeights.Bold ? FontWeights.Normal : FontWeights.Bold);
+    }
+
     private void Italic_Click(object sender, RoutedEventArgs e)
     {
         var sel = Editor.Selection;
@@ -984,6 +994,81 @@ public partial class MainWindow : Window
             ".flac" => "audio/flac",
             _ => "application/octet-stream"
         };
+    }
+
+    // ===== 编辑 Tab 补充：目录 / 视频 / 书签 =====
+
+    private void InsertToc_Click(object sender, RoutedEventArgs e)
+    {
+        if (!Editor.IsEnabled) { ViewModel.StatusMessage = "请先选择一个章节"; return; }
+        // 轻量占位：插入一个加粗的「目录」段落，作为待替换的目录占位标记
+        var para = new Paragraph
+        {
+            FontSize = 20,
+            FontWeight = FontWeights.Bold,
+            TextAlignment = TextAlignment.Center,
+            Margin = new Thickness(0, 12, 0, 12)
+        };
+        para.Inlines.Add(new Run("【目录】"));
+        Editor.Document.Blocks.Add(para);
+        ViewModel.StatusMessage = "已插入目录占位符（请手动替换为自动生成目录）";
+    }
+
+    private void InsertVideo_Click(object sender, RoutedEventArgs e)
+    {
+        if (!Editor.IsEnabled) { ViewModel.StatusMessage = "请先选择一个章节"; return; }
+        var dialog = new OpenFileDialog
+        {
+            Filter = "视频文件|*.mp4;*.webm;*.ogv;*.mov;*.mkv|所有文件|*.*",
+            Title = "选择视频文件"
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        var filePath = dialog.FileName;
+        var fileName = Path.GetFileName(filePath);
+        // 注：当前 EpubResourceKind 未包含 Video，资源打包按通用二进制处理；
+        // 浏览器原生支持有限，EPUB3 仅规范音频；视频以占位标记呈现，后续可扩展为视频资源类型。
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
+        var mime = ext switch
+        {
+            ".mp4" => "video/mp4",
+            ".webm" => "video/webm",
+            ".ogv" => "video/ogg",
+            ".mov" => "video/quicktime",
+            ".mkv" => "video/x-matroska",
+            _ => "application/octet-stream"
+        };
+
+        var para = new Paragraph
+        {
+            Background = GetThemeBrush("SurfaceAccentSubtle", Brushes.LightYellow),
+            Padding = new Thickness(8),
+            Margin = new Thickness(0, 6, 0, 6)
+        };
+        para.Inlines.Add(new Run($"🎬 视频占位：{fileName}（{mime}，待扩展资源打包）"));
+        Editor.Document.Blocks.Add(para);
+        ViewModel.StatusMessage = $"已插入视频占位：{fileName}（EPUB 视频资源支持待扩展）";
+    }
+
+    private void InsertBookmark_Click(object sender, RoutedEventArgs e)
+    {
+        if (!Editor.IsEnabled) { ViewModel.StatusMessage = "请先选择一个章节"; return; }
+        // 插入一个以「🔖 书签」标记的内联书签（运行时显示为视觉提示，导出 XHTML 时转为 anchor）
+        var caret = Editor.CaretPosition;
+        var run = new Run("🔖 书签")
+        {
+            FontWeight = FontWeights.Bold,
+            Foreground = GetThemeBrush("TextAccent", Brushes.SteelBlue)
+        };
+        if (caret.Paragraph is Paragraph para)
+        {
+            para.Inlines.Add(run);
+        }
+        else
+        {
+            Editor.Document.Blocks.Add(new Paragraph(run));
+        }
+        ViewModel.StatusMessage = "已在光标处插入书签标记";
     }
 
     // ===== 嵌入字体 =====
@@ -1540,12 +1625,34 @@ public partial class MainWindow : Window
 
     private void SyncMaxRestoreIcon()
     {
+        UpdateChromeForState();
         if (MaxRestoreIcon == null) return;
         MaxRestoreIcon.Data = WindowState == WindowState.Maximized
             ? (Geometry)FindResource("IconRestore")
             : (Geometry)FindResource("IconMaximize");
         if (MaxRestoreBtn != null)
             MaxRestoreBtn.ToolTip = WindowState == WindowState.Maximized ? "还原" : "最大化";
+    }
+
+    /// <summary>
+    /// 根据窗口状态调整 WindowChrome：最大化时去掉圆角与可调整边框，
+    /// 避免圆角窗口在最大化后四周留下透明间隙、内容偏移（看起来“没铺满”）；
+    /// 还原时恢复圆角与 6px 边框以便拖拽缩放。
+    /// </summary>
+    private void UpdateChromeForState()
+    {
+        var chrome = System.Windows.Shell.WindowChrome.GetWindowChrome(this);
+        if (chrome == null) return;
+        if (WindowState == WindowState.Maximized)
+        {
+            chrome.CornerRadius = new CornerRadius(0);
+            chrome.ResizeBorderThickness = new Thickness(0);
+        }
+        else
+        {
+            chrome.CornerRadius = new CornerRadius(8);
+            chrome.ResizeBorderThickness = new Thickness(6);
+        }
     }
 
     /// <summary>标题栏主题按钮：在 Light / Dark / Sepia 之间循环切换。</summary>
@@ -1630,12 +1737,16 @@ public partial class MainWindow : Window
         if (msg == WM_GETMINMAXINFO)
         {
             var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
-            // 用工作区（排除任务栏）约束最大化后的位置与尺寸
+            // 用工作区（排除任务栏）约束最大化后的位置与尺寸。
+            // 注意：MINMAXINFO 使用设备物理像素，而 SystemParameters.WorkArea 返回的是 WPF 逻辑像素。
+            // 在 125%/150% 等高 DPI 显示器上必须乘以缩放因子，否则最大化后窗口会被缩小、偏在角落，
+            // 表现为“点击最大化无效”。
             var work = SystemParameters.WorkArea;
-            mmi.ptMaxPosition.X = (int)work.Left;
-            mmi.ptMaxPosition.Y = (int)work.Top;
-            mmi.ptMaxSize.X = (int)work.Width;
-            mmi.ptMaxSize.Y = (int)work.Height;
+            var dpi = VisualTreeHelper.GetDpi(this);
+            mmi.ptMaxPosition.X = (int)Math.Round(work.Left * dpi.DpiScaleX);
+            mmi.ptMaxPosition.Y = (int)Math.Round(work.Top * dpi.DpiScaleY);
+            mmi.ptMaxSize.X = (int)Math.Round(work.Width * dpi.DpiScaleX);
+            mmi.ptMaxSize.Y = (int)Math.Round(work.Height * dpi.DpiScaleY);
             Marshal.StructureToPtr(mmi, lParam, true);
             handled = true;
         }

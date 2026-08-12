@@ -17,9 +17,10 @@ public sealed class ChapterSplitter
         RegexOptions.Compiled | RegexOptions.Multiline);
 
     // 特殊章节：前言、序言、楔子、引子、尾声、后记、附录、番外、序章、终章
-    // 必须独占一行（允许前后空白）
+    // 必须独占一行（允许前后空白）。注意：前后空白只允许空格/制表/全角空格，
+    // 不能包含换行，否则多行模式下会跨空行把断点错落到换行符上。
     private static readonly Regex SpecialChapterPattern = new(
-        @"^[\s\u3000]*(前言|楔子|引子|序言|自序|代序|原序|译者序|尾声|后记|附录|番外|序章|终章)[\s\u3000]*$",
+        @"^[ \t\u3000]*(前言|楔子|引子|序言|自序|代序|原序|译者序|尾声|后记|附录|番外|序章|终章)[ \t\u3000]*$",
         RegexOptions.Compiled | RegexOptions.Multiline);
 
     // 英文章节标记：Chapter 1 / Part II / Section 3 等
@@ -56,6 +57,10 @@ public sealed class ChapterSplitter
 
     /// <summary>
     /// 按指定规则配置切分章节。多个规则并行收集切分点，去重排序后切分。
+    /// 两种段模型：
+    ///  - 标题模式：切分点所在行作为章节标题（智能标记 / 特征标题行 / 等长 / 组合）。
+    ///  - 分隔线模式：仅特征字面量且每处匹配行"整行即分隔线"（如 === 分割线 ===），
+    ///    且该规则独立启用时，分隔线本身不作为标题，仅用于把内容块切开。
     /// </summary>
     public List<ChapterSegment> Split(string text, SplitOptions options)
     {
@@ -67,37 +72,66 @@ public sealed class ChapterSplitter
         // 规范化换行
         text = text.Replace("\r\n", "\n").Replace('\r', '\n');
 
-        // 收集所有启用的规则产生的切分点
-        var breakPoints = new SortedSet<int>();
+        // 智能标记
+        var smartPoints = new List<int>();
         if (options.SmartEnabled)
         {
-            foreach (var idx in CollectSmartMarkerIndices(text, options.MaxTitleLength))
-            {
-                breakPoints.Add(AdjustToLineStart(text, idx));
-            }
+            smartPoints.AddRange(CollectSmartMarkerIndices(text, options.MaxTitleLength));
         }
+
+        // 特征规则
+        var featurePoints = new List<int>();
+        var featureIsPureDivider = false;
         if (options.FeatureEnabled && !string.IsNullOrWhiteSpace(options.FeaturePattern))
         {
-            foreach (var idx in CollectFeatureIndices(text, options.FeaturePattern!))
+            Regex? featureRegex = null;
+            try
             {
-                breakPoints.Add(AdjustToLineStart(text, idx));
+                featureRegex = new Regex(options.FeaturePattern!, RegexOptions.Multiline);
             }
-        }
-        if (options.EqualLengthEnabled && options.EqualByteLength > 0)
-        {
-            foreach (var idx in CollectEqualLengthIndices(text, options.EqualByteLength))
+            catch (ArgumentException)
             {
-                breakPoints.Add(idx);
+                featureRegex = null; // 非法正则 → 字面量
+            }
+
+            var raw = CollectFeatureIndices(text, featureRegex, options.FeaturePattern!);
+            featurePoints.AddRange(raw.Select(r => r.Index));
+
+            // 纯分隔线：每一处匹配所在整行都恰好等于匹配文本本身
+            // （如 "=== 分割线 ===" 独占一行）。此时分隔线不作为标题，仅用于切开内容块。
+            if (raw.Count > 0)
+            {
+                featureIsPureDivider = raw.All(r => LineText(text, r.Index).Trim() == r.Matched.Trim());
             }
         }
 
-        // 没有切分点 → 兜底：按段落拆分
-        if (breakPoints.Count == 0)
+        // 等长规则
+        var equalPoints = new List<int>();
+        if (options.EqualLengthEnabled && options.EqualByteLength > 0)
+        {
+            equalPoints.AddRange(CollectEqualLengthIndices(text, options.EqualByteLength));
+        }
+
+        // 无任何切分点 → 兜底按段落拆分
+        if (smartPoints.Count == 0 && featurePoints.Count == 0 && equalPoints.Count == 0)
         {
             return SplitByParagraphs(text);
         }
 
-        return SplitAtBreakPoints(text, breakPoints);
+        // 纯分隔线模式：仅特征规则、未开智能/等长、且所有匹配都是"整行即分隔线"
+        if (!options.SmartEnabled && equalPoints.Count == 0 &&
+            featurePoints.Count > 0 && featureIsPureDivider)
+        {
+            return SplitAsSeparators(text, featurePoints);
+        }
+
+        // 标题模式：所有切分点所在行作为章节标题
+        var breakPoints = new SortedSet<int>();
+        foreach (var i in smartPoints) breakPoints.Add(AdjustToLineStart(text, i));
+        foreach (var i in featurePoints) breakPoints.Add(AdjustToLineStart(text, i));
+        foreach (var i in equalPoints) breakPoints.Add(i);
+
+        return SplitAtBreakPoints(text, breakPoints, options.SmartEnabled);
     }
 
     /// <summary>
@@ -250,34 +284,27 @@ public sealed class ChapterSplitter
         }
     }
 
-    /// <summary>特征规则：按用户字符串或正则收集切分点。合法正则按正则，否则按字面量包含。</summary>
-    private static IEnumerable<int> CollectFeatureIndices(string text, string pattern)
+    /// <summary>特征规则：按用户字符串或正则收集切分点。返回每项（位置, 实际匹配文本）。</summary>
+    private static List<(int Index, string Matched)> CollectFeatureIndices(string text, Regex? regex, string pattern)
     {
-        Regex? regex = null;
-        try
-        {
-            regex = new Regex(pattern, RegexOptions.Multiline);
-        }
-        catch (ArgumentException)
-        {
-            // 非合法正则，按字面量包含匹配
-        }
-
+        var list = new List<(int, string)>();
         if (regex != null)
         {
             foreach (Match m in regex.Matches(text))
-                yield return m.Index;
-            yield break;
+                list.Add((m.Index, m.Value));
+            return list;
         }
 
         var idx = 0;
         while (idx < text.Length)
         {
             var found = text.IndexOf(pattern, idx, StringComparison.Ordinal);
-            if (found < 0) yield break;
-            yield return found;
+            if (found < 0) break;
+            list.Add((found, pattern));
             idx = found + Math.Max(1, pattern.Length);
         }
+
+        return list;
     }
 
     /// <summary>等长规则：按 UTF-8 字节数累积，超过阈值则在该位置切分。</summary>
@@ -298,10 +325,22 @@ public sealed class ChapterSplitter
     }
 
     /// <summary>按切分点列表切分文本，每个切分点所在行作为新章节标题。</summary>
-    private static List<ChapterSegment> SplitAtBreakPoints(string text, SortedSet<int> breakPoints)
+    /// <param name="smartMode">是否处于智能模式。智能模式下，首个切分点之前若有前导内容，
+    /// 则独立成「引言」段（避免正文开头被吞掉）。</param>
+    private static List<ChapterSegment> SplitAtBreakPoints(string text, SortedSet<int> breakPoints, bool smartMode)
     {
         var result = new List<ChapterSegment>();
         var sorted = breakPoints.ToList();
+
+        // 前导内容：智能模式下首个章节标记之前的正文（如"前言性质"的引子）
+        if (smartMode && sorted[0] > 0)
+        {
+            var lead = text[0..sorted[0]].Trim();
+            if (!string.IsNullOrWhiteSpace(lead))
+            {
+                result.Add(new ChapterSegment("引言", lead));
+            }
+        }
 
         for (var i = 0; i < sorted.Count; i++)
         {
@@ -323,6 +362,69 @@ public sealed class ChapterSplitter
         }
 
         return result;
+    }
+
+    /// <summary>分隔线模式：按特征分隔线把文本切成内容块，分隔线本身不作为标题。</summary>
+    private static List<ChapterSegment> SplitAsSeparators(string text, List<int> featurePoints)
+    {
+        var result = new List<ChapterSegment>();
+        var sorted = featurePoints.OrderBy(x => x).ToList();
+
+        var prev = 0;
+        foreach (var p in sorted)
+        {
+            var ls = AdjustToLineStart(text, p);
+            var le = text.IndexOf('\n', ls);
+            if (le < 0) le = text.Length;
+
+            var block = text[prev..ls].Trim();
+            if (!string.IsNullOrWhiteSpace(block))
+            {
+                result.Add(new ChapterSegment(FirstLineTitle(block), block));
+            }
+
+            prev = le; // 跳过分隔线所在行，下一块从下一行起算
+        }
+
+        var tail = text[prev..].Trim();
+        if (!string.IsNullOrWhiteSpace(tail))
+        {
+            result.Add(new ChapterSegment(FirstLineTitle(tail), tail));
+        }
+
+        if (result.Count == 0)
+        {
+            result.Add(new ChapterSegment("正文", text.Trim()));
+        }
+
+        return result;
+    }
+
+    /// <summary>取 pos 所在整行文本（不含行尾换行）。</summary>
+    private static string LineText(string text, int pos)
+    {
+        int ls;
+        if (pos <= 0)
+        {
+            ls = 0;
+        }
+        else
+        {
+            var safe = Math.Min(pos, text.Length);
+            var x = text.LastIndexOf('\n', safe - 1);
+            ls = x < 0 ? 0 : x + 1;
+        }
+
+        var le = text.IndexOf('\n', ls);
+        if (le < 0) le = text.Length;
+        return text[ls..le];
+    }
+
+    /// <summary>从内容块取首行作为章节标题；空则回退「正文」。</summary>
+    private static string FirstLineTitle(string block)
+    {
+        var firstLine = block.Split('\n', 2)[0].Trim();
+        return string.IsNullOrWhiteSpace(firstLine) ? "正文" : firstLine;
     }
 
     /// <summary>
