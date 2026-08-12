@@ -598,10 +598,23 @@ public partial class MainWindow : Window
 
     private void Style_Click(object sender, RoutedEventArgs e)
     {
-        if (Editor is null || !Editor.IsEnabled) return;
         if (sender is not Button btn) return;
+        ApplyHeadingStyle(btn.Tag?.ToString() ?? "normal");
+    }
 
-        var tag = btn.Tag?.ToString() ?? "";
+    private void StyleCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (StyleCombo.SelectedItem is not ComboBoxItem item) return;
+        var tag = item.Tag?.ToString();
+        if (tag is null or "prompt") return;
+        ApplyHeadingStyle(tag);
+        // 重置回提示项，允许重复应用同一样式
+        StyleCombo.SelectedIndex = 0;
+    }
+
+    private void ApplyHeadingStyle(string tag)
+    {
+        if (Editor is null || !Editor.IsEnabled) return;
         var para = GetCurrentParagraph();
         if (para is null) return;
 
