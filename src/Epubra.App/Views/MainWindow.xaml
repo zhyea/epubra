@@ -11,7 +11,9 @@
         Background="{DynamicResource SurfaceBase}"
         Loaded="MainWindow_Loaded"
         PreviewKeyDown="Window_PreviewKeyDown"
-        PreviewMouseLeftButtonDown="Window_PreviewMouseLeftButtonDown">
+        PreviewMouseLeftButtonDown="Window_PreviewMouseLeftButtonDown"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="Auto">
     <WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6" CornerRadius="8" UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>

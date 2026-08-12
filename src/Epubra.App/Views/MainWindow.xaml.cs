@@ -1845,16 +1845,26 @@ public partial class MainWindow : Window
         if (msg == WM_GETMINMAXINFO)
         {
             var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
-            // 用工作区（排除任务栏）约束最大化后的位置与尺寸。
-            // 注意：MINMAXINFO 使用设备物理像素，而 SystemParameters.WorkArea 返回的是 WPF 逻辑像素。
-            // 在 125%/150% 等高 DPI 显示器上必须乘以缩放因子，否则最大化后窗口会被缩小、偏在角落，
-            // 表现为“点击最大化无效”。
-            var work = SystemParameters.WorkArea;
-            var dpi = VisualTreeHelper.GetDpi(this);
-            mmi.ptMaxPosition.X = (int)Math.Round(work.Left * dpi.DpiScaleX);
-            mmi.ptMaxPosition.Y = (int)Math.Round(work.Top * dpi.DpiScaleY);
-            mmi.ptMaxSize.X = (int)Math.Round(work.Width * dpi.DpiScaleX);
-            mmi.ptMaxSize.Y = (int)Math.Round(work.Height * dpi.DpiScaleY);
+            // 直接用“当前窗口所在监视器”的真实工作区（设备物理像素）约束最大化尺寸。
+            // 旧实现用 SystemParameters.WorkArea（仅反映主屏）× WPF-DPI 换算：在多屏/高 DPI 下会因
+            // SystemParameters 取错屏、或 GetDpi 在初始化时序未就绪返回 1.0 而算错 ptMaxSize，
+            // 导致最大化后窗口偏小、偏在角落，表现为“点击最大化无法全屏”。
+            // Monitor API 返回本机物理像素，无需缩放换算，对所有 DPI/多屏场景都正确。
+            var monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+            if (monitor != IntPtr.Zero)
+            {
+                var mi = new MONITORINFO { cbSize = (uint)Marshal.SizeOf<MONITORINFO>() };
+                if (GetMonitorInfo(monitor, ref mi))
+                {
+                    mmi.ptMaxPosition.X = mi.rcWork.Left;
+                    mmi.ptMaxPosition.Y = mi.rcWork.Top;
+                    mmi.ptMaxSize.X = mi.rcWork.Right - mi.rcWork.Left;
+                    mmi.ptMaxSize.Y = mi.rcWork.Bottom - mi.rcWork.Top;
+                    // 同步最大可拖拽尺寸，避免最大化后被约束在原始窗口大小附近而“弹回”。
+                    mmi.ptMaxTrackSize.X = mi.rcWork.Right - mi.rcWork.Left;
+                    mmi.ptMaxTrackSize.Y = mi.rcWork.Bottom - mi.rcWork.Top;
+                }
+            }
             Marshal.StructureToPtr(mmi, lParam, true);
             handled = true;
         }
@@ -1877,6 +1887,33 @@ public partial class MainWindow : Window
         public POINT ptMinTrackSize;
         public POINT ptMaxTrackSize;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MONITORINFO
+    {
+        public uint cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
+
+    private const uint MONITOR_DEFAULTTONEAREST = 2;
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
 
     // ===== P11.1 输入对话框 =====
 

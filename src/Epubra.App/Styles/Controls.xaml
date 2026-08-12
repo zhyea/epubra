@@ -95,7 +95,7 @@
                             <Setter TargetName="bd" Property="Background" Value="{DynamicResource SurfaceBase}" />
                             <Setter TargetName="indicator" Property="Background" Value="{DynamicResource AccentDefault}" />
                             <Setter Property="Foreground" Value="{DynamicResource TextAccent}" />
-                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter Property="FontWeight" Value="Normal" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
