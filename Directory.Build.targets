@@ -28,4 +28,13 @@
     <Content          Remove="**/bin/**" />
     <Content          Remove="**/bin_bak/**" />
   </ItemGroup>
+
+  <!--
+    构建前自动释放被宿主 EDR / 文件监视器持有的旧 Epubra.exe 句柄。
+    遗留的运行实例会锁住输出目录（C:\epubra_bld）下的程序集，导致 MSB3027 复制失败。
+    taskkill 失败（无进程）时 ContinueOnError 保证构建不被中断。仅 Windows 生效。
+  -->
+  <Target Name="KillStaleEpubraBeforeBuild" BeforeTargets="BeforeBuild" Condition="'$(OS)' == 'Windows_NT'">
+    <Exec Command="taskkill /IM Epubra.exe /F 2>nul" ContinueOnError="true" IgnoreExitCode="true" EchoOff="true" />
+  </Target>
 </Project>
