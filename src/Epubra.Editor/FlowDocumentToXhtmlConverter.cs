@@ -68,6 +68,11 @@ public static class FlowDocumentToXhtmlConverter
                     var audioSrc = tag["audio:".Length..];
                     sb.Append("<audio src=\"").Append(EscapeAttribute(audioSrc)).Append("\" controls=\"controls\"/>\n");
                 }
+                else if (uiContainer.Child is System.Windows.Controls.Border border2 && border2.Tag is string vtag && vtag.StartsWith("video:"))
+                {
+                    var videoSrc = vtag["video:".Length..];
+                    sb.Append("<video src=\"").Append(EscapeAttribute(videoSrc)).Append("\" controls=\"controls\"/>\n");
+                }
                 break;
         }
     }

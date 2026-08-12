@@ -94,6 +94,7 @@ public static class XhtmlToFlowDocumentConverter
             "div" => ConvertDiv(element),
             "img" => ConvertImageBlock(element),
             "audio" => ConvertAudioBlock(element),
+            "video" => ConvertVideoBlock(element),
             _ => null
         };
     }
@@ -242,6 +243,51 @@ public static class XhtmlToFlowDocumentConverter
         return container;
     }
 
+    /// <summary>把 &lt;video&gt; 标签转换为 FlowDocument 中的可视化占位符。</summary>
+    private static Block ConvertVideoBlock(XElement element)
+    {
+        var src = element.Attribute("src")?.Value;
+        if (string.IsNullOrEmpty(src))
+        {
+            var sourceEl = element.Elements().FirstOrDefault(e => e.Name.LocalName == "source");
+            src = sourceEl?.Attribute("src")?.Value;
+        }
+
+        var displayName = string.IsNullOrEmpty(src) ? "视频" : Path.GetFileName(src);
+
+        var border = new System.Windows.Controls.Border
+        {
+            Background = GetThemeBrush("SurfaceAccentSubtle", System.Windows.Media.Brushes.AliceBlue),
+            BorderBrush = GetThemeBrush("BorderAccent", System.Windows.Media.Brushes.SteelBlue),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(12, 6, 12, 6),
+            CornerRadius = new CornerRadius(4),
+            Tag = $"video:{src}"
+        };
+
+        var panel = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal
+        };
+        panel.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = "\uD83C\uDFAC ",  // 🎬 emoji
+            FontSize = 18,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        panel.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = displayName,
+            FontSize = 14,
+            Foreground = GetThemeBrush("TextAccent", System.Windows.Media.Brushes.SteelBlue),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        border.Child = panel;
+
+        var container = new BlockUIContainer { Child = border };
+        return container;
+    }
+
     private static void ConvertInlines(XElement element, InlineCollection inlines)
     {
         foreach (var node in element.Nodes())
@@ -272,6 +318,7 @@ public static class XhtmlToFlowDocumentConverter
             "a" => CreateHyperlink(element),
             "img" => CreateImageInline(element),
             "audio" => CreateAudioInline(element),
+            "video" => CreateVideoInline(element),
             "span" => CreateSpan(element),
             _ => CreateTextRun(element)
         };
@@ -404,6 +451,19 @@ public static class XhtmlToFlowDocumentConverter
         }
         var name = string.IsNullOrEmpty(src) ? "音频" : Path.GetFileName(src);
         return new Run($"[音频: {name}]");
+    }
+
+    /// <summary>为内联 &lt;video&gt; 标签创建占位符 Run。</summary>
+    private static Inline CreateVideoInline(XElement element)
+    {
+        var src = element.Attribute("src")?.Value;
+        if (string.IsNullOrEmpty(src))
+        {
+            var sourceEl = element.Elements().FirstOrDefault(e => e.Name.LocalName == "source");
+            src = sourceEl?.Attribute("src")?.Value;
+        }
+        var name = string.IsNullOrEmpty(src) ? "视频" : Path.GetFileName(src);
+        return new Run($"[视频: {name}]");
     }
 
     private static string? ExtractCssValue(string css, string property)

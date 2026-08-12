@@ -7,6 +7,7 @@ public enum EpubResourceKind
 {
     Image,
     Audio,
+    Video,
     Font,
     StyleSheet,
     Other

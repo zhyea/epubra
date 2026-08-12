@@ -1032,35 +1032,92 @@ public partial class MainWindow : Window
         if (!Editor.IsEnabled) { ViewModel.StatusMessage = "请先选择一个章节"; return; }
         var dialog = new OpenFileDialog
         {
-            Filter = "视频文件|*.mp4;*.webm;*.ogv;*.mov;*.mkv|所有文件|*.*",
+            Filter = "视频文件|*.mp4;*.webm;*.ogv;*.mov;*.mkv;*.avi|所有文件|*.*",
             Title = "选择视频文件"
         };
         if (dialog.ShowDialog() != true) return;
 
         var filePath = dialog.FileName;
         var fileName = Path.GetFileName(filePath);
-        // 注：当前 EpubResourceKind 未包含 Video，资源打包按通用二进制处理；
-        // 浏览器原生支持有限，EPUB3 仅规范音频；视频以占位标记呈现，后续可扩展为视频资源类型。
-        var ext = Path.GetExtension(fileName).ToLowerInvariant();
-        var mime = ext switch
+        var data = File.ReadAllBytes(filePath);
+        var mimeType = GetVideoMimeType(filePath);
+
+        // 添加视频资源到 Book（EpubResourceKind.Video，打包进 OEBPS/video/）
+        var resource = new Epubra.Core.EpubResource
         {
-            ".mp4" => "video/mp4",
+            Kind = Epubra.Core.EpubResourceKind.Video,
+            FileName = fileName,
+            MimeType = mimeType,
+            Data = data,
+            Role = "video"
+        };
+        ViewModel.Book.Resources.Add(resource);
+
+        // 在编辑器中插入视频占位符
+        var videoHref = $"video/{fileName}";
+        var border = new Border
+        {
+            Background = GetThemeBrush("SurfaceAccentSubtle", Brushes.AliceBlue),
+            BorderBrush = GetThemeBrush("BorderAccent", Brushes.SteelBlue),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(12, 6, 12, 6),
+            CornerRadius = new CornerRadius(4),
+            Tag = $"video:{videoHref}"
+        };
+
+        var panel = new StackPanel { Orientation = Orientation.Horizontal };
+        panel.Children.Add(new TextBlock
+        {
+            Text = "\uD83C\uDFAC ",
+            FontSize = 18,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = fileName,
+            FontSize = 14,
+            Foreground = GetThemeBrush("TextAccent", Brushes.SteelBlue),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        border.Child = panel;
+
+        var container = new BlockUIContainer { Child = border };
+
+        // 在当前段落后面插入
+        var caret = Editor.CaretPosition;
+        var para = caret?.Paragraph;
+        if (para is null)
+        {
+            Editor.Document.Blocks.Add(container);
+        }
+        else
+        {
+            var doc = Editor.Document;
+            var idx = 0;
+            foreach (var b in doc.Blocks)
+            {
+                if (b == para) break;
+                idx++;
+            }
+            ((System.Collections.IList)doc.Blocks).Insert(idx + 1, container);
+        }
+
+        ViewModel.StatusMessage = $"已插入视频：{fileName} ({data.Length / 1024.0:F1} KB)";
+    }
+
+    private static string GetVideoMimeType(string fileName)
+    {
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
+        return ext switch
+        {
+            ".mp4" or ".m4v" => "video/mp4",
             ".webm" => "video/webm",
             ".ogv" => "video/ogg",
             ".mov" => "video/quicktime",
             ".mkv" => "video/x-matroska",
+            ".avi" => "video/x-msvideo",
             _ => "application/octet-stream"
         };
-
-        var para = new Paragraph
-        {
-            Background = GetThemeBrush("SurfaceAccentSubtle", Brushes.LightYellow),
-            Padding = new Thickness(8),
-            Margin = new Thickness(0, 6, 0, 6)
-        };
-        para.Inlines.Add(new Run($"🎬 视频占位：{fileName}（{mime}，待扩展资源打包）"));
-        Editor.Document.Blocks.Add(para);
-        ViewModel.StatusMessage = $"已插入视频占位：{fileName}（EPUB 视频资源支持待扩展）";
     }
 
     private void InsertBookmark_Click(object sender, RoutedEventArgs e)

@@ -71,6 +71,7 @@ internal sealed class EpubPackPlan
             {
                 EpubResourceKind.Image => "images",
                 EpubResourceKind.Audio => "audio",
+                EpubResourceKind.Video => "video",
                 EpubResourceKind.Font => "fonts",
                 EpubResourceKind.StyleSheet => "styles",
                 _ => "misc"
@@ -121,6 +122,7 @@ internal sealed class EpubPackPlan
     {
         EpubResourceKind.Image => ".png",
         EpubResourceKind.Audio => ".mp3",
+        EpubResourceKind.Video => ".mp4",
         EpubResourceKind.Font => ".ttf",
         EpubResourceKind.StyleSheet => ".css",
         _ => ".bin"

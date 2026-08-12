@@ -240,6 +240,8 @@ public sealed class EpubReader
             return EpubResourceKind.Image;
         if (mediaType.StartsWith("audio/", StringComparison.Ordinal))
             return EpubResourceKind.Audio;
+        if (mediaType.StartsWith("video/", StringComparison.Ordinal))
+            return EpubResourceKind.Video;
         if (mediaType.StartsWith("font/", StringComparison.Ordinal) || mediaType is "application/font-woff" or "application/font-woff2")
             return EpubResourceKind.Font;
         if (mediaType is "text/css")
