@@ -1014,17 +1014,55 @@ public partial class MainWindow : Window
     private void InsertToc_Click(object sender, RoutedEventArgs e)
     {
         if (!Editor.IsEnabled) { ViewModel.StatusMessage = "请先选择一个章节"; return; }
-        // 轻量占位：插入一个加粗的「目录」段落，作为待替换的目录占位标记
-        var para = new Paragraph
+
+        var book = ViewModel.Book;
+        var ordered = Epubra.Core.ChapterTreeWalker.WalkInDocumentOrder(book.Chapters).ToList();
+        if (ordered.Count == 0) { ViewModel.StatusMessage = "当前书籍没有章节，无法生成目录"; return; }
+
+        // 标题「目录」
+        var heading = new Paragraph
         {
             FontSize = 20,
             FontWeight = FontWeights.Bold,
             TextAlignment = TextAlignment.Center,
             Margin = new Thickness(0, 12, 0, 12)
         };
-        para.Inlines.Add(new Run("【目录】"));
-        Editor.Document.Blocks.Add(para);
-        ViewModel.StatusMessage = "已插入目录占位符（请手动替换为自动生成目录）";
+        heading.Inlines.Add(new Run("目录"));
+        Editor.Document.Blocks.Add(heading);
+
+        // 真实目录列表：按文档顺序 + 层级缩进，反映书籍实际章节结构
+        var list = BuildTocForParent(book.Chapters, System.Guid.Empty, 0, isTop: true);
+        Editor.Document.Blocks.Add(list);
+
+        ViewModel.StatusMessage = $"已生成目录（{ordered.Count} 个章节）";
+    }
+
+    /// <summary>递归构建目录列表：父级用数字编号，子级用圆点，按层级缩进。</summary>
+    private static List BuildTocForParent(System.Collections.Generic.IEnumerable<Epubra.Core.Chapter> all, System.Guid parentId, int depth, bool isTop)
+    {
+        var list = new List
+        {
+            MarkerStyle = isTop ? TextMarkerStyle.Decimal : TextMarkerStyle.Disc
+        };
+
+        var children = isTop
+            ? Epubra.Core.ChapterTreeWalker.GetTopLevel(all)
+            : Epubra.Core.ChapterTreeWalker.GetChildren(all, parentId);
+
+        foreach (var ch in children)
+        {
+            var item = new ListItem();
+            var para = new Paragraph();
+            para.Inlines.Add(new Run(string.IsNullOrWhiteSpace(ch.Title) ? "(未命名章节)" : ch.Title));
+            item.Blocks.Add(para);
+
+            var sub = BuildTocForParent(all, ch.Id, depth + 1, isTop: false);
+            if (sub.ListItems.Count > 0) item.Blocks.Add(sub);
+
+            list.ListItems.Add(item);
+        }
+
+        return list;
     }
 
     private void InsertVideo_Click(object sender, RoutedEventArgs e)
