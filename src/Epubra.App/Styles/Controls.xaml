@@ -107,16 +107,18 @@
         <Style x:Key="RibbonGroup" TargetType="Border">
             <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}" />
             <Setter Property="BorderThickness" Value="0,0,1,0" />
-            <Setter Property="Padding" Value="8,4,8,4" />
+            <Setter Property="Padding" Value="6,3,6,3" />
         </Style>
 
-    <!-- Ribbon 分组标签 — 12px 保证 AA 对比度 -->
+    <!-- Ribbon 分组标签 — 12px 保证 AA 对比度；
+         上 0 / 下 2px 让标签贴近上方按钮区，标签区保持最小高度 -->
     <Style x:Key="GroupLabel" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontUI}" />
         <Setter Property="FontSize" Value="{StaticResource FontSizeSm}" />
         <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
         <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="Margin" Value="0,3,0,0" />
+        <Setter Property="Margin" Value="0,0,0,2" />
+        <Setter Property="LineHeight" Value="14" />
     </Style>
 
 
@@ -219,12 +221,13 @@
         <Setter Property="Template" Value="{StaticResource RibbonButtonTemplate}" />
     </Style>
 
-    <!-- 图标 + 文字组合按钮 -->
+    <!-- 图标 + 文字组合按钮（图上文字下，整体高约 38px）；
+         必须显式 Height=Auto 才能覆盖 RBtnM 父样式的 24 固定高 -->
     <Style x:Key="RBtnIconText" TargetType="Button" BasedOn="{StaticResource RBtnM}">
+        <Setter Property="Height" Value="Auto" />
         <Setter Property="MinWidth" Value="60" />
-        <Setter Property="MinHeight" Value="50" />
-        <Setter Property="Height" Value="50" />
-        <Setter Property="Padding" Value="2,2" />
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Padding" Value="4,2" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
